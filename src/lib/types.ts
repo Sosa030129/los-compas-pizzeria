@@ -10,7 +10,8 @@ export type View =
   | 'admin'
   | 'kitchen'
   | 'delivery'
-  | 'login';
+  | 'login'
+  | 'account';
 
 export type CategoryId = 'pizzas' | 'comidas' | 'postres' | 'bebidas' | 'combos' | 'ingredientes';
 

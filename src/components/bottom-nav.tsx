@@ -10,7 +10,7 @@ const items: { view: View; label: string; icon: typeof Home }[] = [
   { view: 'menu', label: 'Menú', icon: Pizza },
   { view: 'cart', label: 'Carrito', icon: ShoppingCart },
   { view: 'tracking', label: 'Pedidos', icon: ClipboardList },
-  { view: 'login', label: 'Cuenta', icon: User },
+  { view: 'account', label: 'Cuenta', icon: User },
 ];
 
 export function BottomNav() {

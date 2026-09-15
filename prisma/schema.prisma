@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// LOS COMPAS PIZZERÍA - Prisma schema completo
+// 14 tablas del negocio (sección 52 del prompt maestro)
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +10,231 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+// ===== 1. CLIENTES (cuentas opcionales) =====
+model Customer {
+  id           String      @id @default(cuid())
+  name         String
+  phone        String      @unique
+  email        String?
+  passwordHash String      // PBKDF2 hash
+  addresses    String      @default("[]") // JSON array of {address, reference}
+  favorites    String      @default("[]") // JSON array of productId
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  orders       Order[]
+  sessions     Session[]
+}
+
+// ===== 2. EMPLEADOS =====
+model Employee {
+  id           String   @id @default(cuid())
+  name         String
+  phone        String
+  username     String   @unique
+  passwordHash String   // PBKDF2 hash
+  role         String   @default("personalizado") // admin | cocina | repartidor | personalizado
+  active       Boolean  @default(true)
+  // Permisos serializados como JSON string (SQLite no soporta arrays nativos)
+  permissions  String   @default("{}") // JSON: {ver_pedidos, crear_combos, ...}
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  orders       Order[]  @relation("DeliveryAssignments")
+  sessions     Session[]
+}
+
+// ===== 3. SESIONES (cliente y empleado) =====
+// Token aleatorio de 64 chars, almacenado en cookie httpOnly
+model Session {
+  id           String   @id @default(cuid())
+  token        String   @unique
+  type         String   // 'employee' | 'customer'
+  employeeId   String?
+  customerId   String?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  employee     Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+// ===== 4. CATEGORÍAS =====
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  emoji     String    @default("🍕")
+  visible   Boolean   @default(true)
+  order     Int       @default(0)
+  products  Product[]
+}
+
+// ===== 5. PRODUCTOS =====
+model Product {
+  id                String   @id @default(cuid())
+  name              String
+  description       String   @default("")
+  categoryId        String
+  emoji             String   @default("🍕")
+  price             Int      @default(0)
+  available         Boolean  @default(true)
+  prepTime          Int      @default(15) // minutos
+  isPizza           Boolean  @default(false)
+  isCombo           Boolean  @default(false)
+  defaultSize       String?  // si isPizza: size id
+  defaultIngredients String? // JSON array de ingredient ids
+  comboItems       String?  // JSON array de product ids (si isCombo)
+  createdAt         DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  category          Category @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+}
+
+// ===== 6. TAMAÑOS DE PIZZA =====
+model SizeOption {
+  id         String   @id @default(cuid())
+  sizeId     String   @unique // 'pequena_20', 'mediana_25', etc.
+  label      String
+  basePrice  Int
+  order      Int      @default(0)
+}
+
+// ===== 7. INGREDIENTES =====
+model Ingredient {
+  id           String  @id @default(cuid())
+  name         String
+  emoji       String  @default("🧀")
+  color        String  @default("#ffd966")
+  // Precios por tamaño serializados como JSON: {"pequena_20": 250, "familiar_42x30": 700}
+  priceBySize String  @default("{}")
+  available   Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===== 8. PROMOCIONES =====
+model Promotion {
+  id             String   @id @default(cuid())
+  name           String
+  description    String   @default("")
+  emoji          String   @default("🎉")
+  type           String   // 'percent' | 'fixed' | 'free_product' | 'bundle'
+  value          Int      @default(0)
+  freeProductId  String?
+  bundleBuyQty   Int?
+  bundleGetQty   Int?
+  validFrom      DateTime
+  validTo        DateTime
+  active         Boolean  @default(true)
+  code           String?  // código promocional opcional (mayúsculas)
+  appliesTo      String   @default("all") // 'all' | 'category' | 'product'
+  categoryId     String?
+  productId      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ===== 9. PEDIDOS =====
+model Order {
+  id              String   @id @default(cuid())
+  code            String   @unique // LC-XXXX
+  customerId      String?  // puede ser null (pedido sin cuenta)
+  customerName    String
+  customerPhone   String
+  customerAddress String
+  reference       String?
+  // Items del pedido serializados como JSON
+  // [{id, productId, name, emoji, unitPrice, qty, size, borderCheese, extrasTotal, ingredients, isCombo, notes}]
+  items           String
+  subtotal        Int
+  extras          Int      @default(0)
+  delivery        Int?     // null = pendiente de confirmar
+  discount        Int      @default(0)
+  surcharge       Int      @default(0)
+  total           Int
+  paymentMethod   String   // 'efectivo' | 'transferencia'
+  timeSlot        String   // 'manana' | 'tarde'
+  deliveryMode    String   // 'domicilio' | 'recogida'
+  scheduledTime   String
+  state           String   @default("recibido")
+  // 'recibido' | 'confirmado' | 'preparando' | 'listo' | 'camino' | 'entregado' | 'cancelado'
+  assignedDeliveryId String? // employee id del repartidor
+  notes           String?
+  createdAt       DateTime @default(now())
+  confirmedAt     DateTime?
+  deliveredAt     DateTime?
+  updatedAt       DateTime @updatedAt
+
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  deliveryPerson  Employee? @relation("DeliveryAssignments", fields: [assignedDeliveryId], references: [id], onDelete: SetNull)
+
+  @@index([state])
+  @@index([customerPhone])
+  @@index([createdAt])
+}
+
+// ===== 10. NÚMEROS DE WHATSAPP =====
+model WhatsAppNumber {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
+  number    String
+  name      String
+  function  String   @default("pedidos") // 'pedidos' | 'cocina' | 'reparto' | 'todos'
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Post {
+// ===== 11. MENSAJES AUTOMÁTICOS DE WHATSAPP (editables) =====
+model WhatsAppTemplate {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
+  event     String   @unique // 'nuevo_pedido' | 'pedido_confirmado' | 'pedido_listo' | 'pedido_entregado'
+  template  String   // Texto con placeholders: {cliente}, {codigo}, {total}, {domicilio}, {horario}
+  active    Boolean  @default(true)
   updatedAt DateTime @updatedAt
+}
+
+// ===== 12. REGISTRO DE MENSAJES WHATSAPP ENVIADOS =====
+model WhatsAppLog {
+  id        String   @id @default(cuid())
+  orderId   String?
+  toNumber  String
+  message   String
+  event     String
+  status    String   @default("pending") // 'pending' | 'sent' | 'failed'
+  error     String?
+  createdAt DateTime @default(now())
+}
+
+// ===== 13. CONFIGURACIÓN DEL NEGOCIO (singleton) =====
+// Solo un row, accesible por id "1"
+model BusinessConfig {
+  id                String   @id @default("1")
+  name              String   @default("LOS COMPAS")
+  city              String   @default("Sancti Spíritus, Cuba")
+  currency          String   @default("CUP")
+  logo              String   @default("/logo.png")
+  phone             String   @default("+53 55000000")
+  address           String   @default("Sancti Spíritus, Cuba")
+  deliveryBase      Int      @default(250)
+  morningStart      String   @default("08:00")
+  morningEnd        String   @default("10:30")
+  morningDelivery   String   @default("12:30 PM - 01:00 PM")
+  afternoonStart    String   @default("13:00")
+  afternoonEnd      String   @default("16:30")
+  afternoonDelivery String   @default("06:30 PM - 07:00 PM")
+  transferSurcharge  Float    @default(0.30)
+  updatedAt         DateTime @updatedAt
+}
+
+// ===== 14. REGISTRO DE ACTIVIDAD (AUDITORÍA) =====
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?  // ID de empleado o cliente (no FK, para evitar restricciones)
+  userName  String   @default("Sistema")
+  action    String
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

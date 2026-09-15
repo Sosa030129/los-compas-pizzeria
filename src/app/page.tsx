@@ -1,7 +1,7 @@
 'use client';
 
-import { useStore } from '@/lib/store';
-import { useEffect, lazy, Suspense } from 'react';
+import { useStore, hydrateFromServer, refreshOrders, checkServerSession } from '@/lib/store';
+import { useEffect, useState, lazy, Suspense, useSyncExternalStore } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { ConnectionIndicator } from '@/components/connection-indicator';
 import { HomeView } from '@/components/views/home-view';
@@ -11,6 +11,7 @@ import { CartView } from '@/components/views/cart-view';
 import { CheckoutView } from '@/components/views/checkout-view';
 import { TrackingView } from '@/components/views/tracking-view';
 import { LoginView } from '@/components/views/login-view';
+import { CustomerAccountView } from '@/components/views/customer-account-view';
 
 // Lazy load de los paneles privados (solo se cargan cuando se necesita login)
 const AdminView = lazy(() => import('@/components/views/admin-view').then(m => ({ default: m.AdminView })));
@@ -25,20 +26,64 @@ function ViewLoader() {
   );
 }
 
+function HydrationGate({ children }: { children: React.ReactNode }) {
+  // Usar useSyncExternalStore para suscribirse al estado de hidratación del persist
+  const hydrated = useSyncExternalStore(
+    (callback) => {
+      const unsub = useStore.persist.onFinishHydration(callback);
+      // Si ya está hidratado, llamar al callback inmediatamente
+      if (useStore.persist.hasHydrated()) {
+        callback();
+      }
+      return unsub;
+    },
+    () => useStore.persist.hasHydrated() === true,
+    () => true, // SSR: asumir hidratado
+  );
+
+  // Timeout de seguridad
+  useEffect(() => {
+    if (!hydrated) {
+      const timeout = setTimeout(() => {
+        // Forzar re-render
+        const event = new Event('force-hydration');
+        window.dispatchEvent(event);
+      }, 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [hydrated]);
+
+  if (!hydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin-slow text-5xl">🍕</div>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 export default function Home() {
   const view = useStore((s) => s.currentView);
   const setView = useStore((s) => s.setView);
+
+  // Al montar: hidratar catálogo desde el backend + verificar sesión existente
+  useEffect(() => {
+    hydrateFromServer();
+    checkServerSession();
+    refreshOrders();
+  }, []);
 
   // Soporte para deep-links PWA via ?view=
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const v = params.get('view') as typeof view | null;
-    if (v && ['home', 'menu', 'builder', 'cart', 'checkout', 'tracking', 'admin', 'kitchen', 'delivery', 'login'].includes(v)) {
+    if (v && ['home', 'menu', 'builder', 'cart', 'checkout', 'tracking', 'admin', 'kitchen', 'delivery', 'login', 'account'].includes(v)) {
       setView(v);
     }
   }, [setView]);
 
-  // Sincronizar URL con la vista actual (bug #47: URL no se actualizaba al navegar)
+  // Sincronizar URL con la vista actual
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
@@ -47,8 +92,14 @@ export default function Home() {
     } else {
       url.searchParams.set('view', view);
     }
-    // Usar replaceState para no llenar el historial con cada click
     window.history.replaceState(window.history.state, '', url.toString());
+  }, [view]);
+
+  // Refrescar pedidos cuando el usuario va a tracking o el admin a pedidos
+  useEffect(() => {
+    if (view === 'tracking' || view === 'admin' || view === 'kitchen' || view === 'delivery') {
+      refreshOrders();
+    }
   }, [view]);
 
   return (
@@ -62,6 +113,7 @@ export default function Home() {
         {view === 'checkout' && <CheckoutView />}
         {view === 'tracking' && <TrackingView />}
         {view === 'login' && <LoginView />}
+        {view === 'account' && <CustomerAccountView />}
         {view === 'admin' && (
           <Suspense fallback={<ViewLoader />}>
             <AdminView />

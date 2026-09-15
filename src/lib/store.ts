@@ -1,7 +1,6 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 
 // Re-export useShallow for convenience
@@ -164,13 +163,12 @@ function capLogs<T extends ActivityLog>(logs: T[]): T[] {
 }
 
 export const useStore = create<Store>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+  (set, get) => ({
+    ...initialState,
 
-      // ===== UI =====
-      setView: (v) => set({ currentView: v }),
-      setSelectedOrder: (id) => set({ selectedOrderId: id }),
+    // ===== UI =====
+    setView: (v) => set({ currentView: v }),
+    setSelectedOrder: (id) => set({ selectedOrderId: id }),
 
       // ===== Carrito =====
       addToCart: (item) =>
@@ -197,7 +195,20 @@ export const useStore = create<Store>()(
       clearCart: () => set({ cart: [], appliedPromoCode: null }),
 
       // ===== Pedidos =====
-      placeOrder: (data) => {
+      placeOrder: (async (data: {
+        customerName: string;
+        customerPhone: string;
+        customerAddress: string;
+        reference?: string;
+        paymentMethod: PaymentMethod;
+        timeSlot: TimeSlot;
+        deliveryMode: 'domicilio' | 'recogida';
+        scheduledTime: string;
+        notes?: string;
+        discount?: number;
+        surcharge?: number;
+      }) => {
+        // Construir items del carrito para enviar al servidor
         const cart = get().cart;
         let subtotal = 0;
         let extras = 0;
@@ -205,106 +216,180 @@ export const useStore = create<Store>()(
           subtotal += item.unitPrice * item.qty;
           extras += item.extrasTotal * item.qty;
         }
-        const base = subtotal + extras;
         const discount = data.discount || 0;
         const surcharge = data.surcharge || 0;
-        // Total = base - discount + delivery(0 al crear, se setea después) + surcharge
-        const order: Order = {
-          id: uid('order'),
-          code: shortCode(),
-          customerName: data.customerName,
-          customerPhone: data.customerPhone,
-          customerAddress: data.customerAddress,
-          reference: data.reference,
-          items: cart,
-          subtotal,
-          extras,
-          delivery: data.deliveryMode === 'domicilio' ? null : 0,
-          discount,
-          surcharge,
-          total: Math.max(0, base - discount + surcharge),
-          paymentMethod: data.paymentMethod,
-          timeSlot: data.timeSlot,
-          deliveryMode: data.deliveryMode,
-          scheduledTime: data.scheduledTime,
-          state: 'recibido',
-          createdAt: Date.now(),
-          notes: data.notes,
-        };
-        set((s) => ({
-          orders: [order, ...s.orders],
-          cart: [],
-          appliedPromoCode: null,
-          lastCustomerPhone: data.customerPhone,
-          currentView: 'tracking',
-          selectedOrderId: order.id,
-          logs: capLogs([
-            {
-              id: uid('log'),
-              user: data.customerName,
-              action: 'Nuevo pedido',
-              detail: `Código ${order.code} - Total ${order.total}`,
-              date: Date.now(),
-            },
-            ...s.logs,
-          ]),
-        }));
-        return order;
-      },
+        const base = subtotal + extras;
+        const total = Math.max(0, base - discount + surcharge);
+
+        // ===== LLAMAR A LA API (POST /api/orders) =====
+        try {
+          const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerName: data.customerName,
+              customerPhone: data.customerPhone,
+              customerAddress: data.customerAddress,
+              reference: data.reference,
+              items: cart,
+              subtotal,
+              extras,
+              discount,
+              surcharge,
+              total,
+              paymentMethod: data.paymentMethod,
+              timeSlot: data.timeSlot,
+              deliveryMode: data.deliveryMode,
+              scheduledTime: data.scheduledTime,
+              notes: data.notes,
+            }),
+          });
+          const result = await res.json();
+          if (!result.ok) {
+            throw new Error(result.error || 'Error creando pedido');
+          }
+          const order = result.order as Order;
+          // Actualizar store localmente con el pedido devuelto
+          set((s) => ({
+            orders: [order, ...s.orders],
+            cart: [],
+            appliedPromoCode: null,
+            lastCustomerPhone: data.customerPhone,
+            currentView: 'tracking',
+            selectedOrderId: order.id,
+            logs: capLogs([
+              {
+                id: uid('log'),
+                user: data.customerName,
+                action: 'Nuevo pedido',
+                detail: `Código ${order.code} - Total ${order.total}`,
+                date: Date.now(),
+              },
+              ...s.logs,
+            ]),
+          }));
+          return order;
+        } catch (e: any) {
+          // Fallback: crear pedido localmente (modo offline/demo)
+          const order: Order = {
+            id: uid('order'),
+            code: shortCode(),
+            customerName: data.customerName,
+            customerPhone: data.customerPhone,
+            customerAddress: data.customerAddress,
+            reference: data.reference,
+            items: cart,
+            subtotal,
+            extras,
+            delivery: data.deliveryMode === 'domicilio' ? null : 0,
+            discount,
+            surcharge,
+            total,
+            paymentMethod: data.paymentMethod,
+            timeSlot: data.timeSlot,
+            deliveryMode: data.deliveryMode,
+            scheduledTime: data.scheduledTime,
+            state: 'recibido',
+            createdAt: Date.now(),
+            notes: data.notes,
+          };
+          set((s) => ({
+            orders: [order, ...s.orders],
+            cart: [],
+            appliedPromoCode: null,
+            lastCustomerPhone: data.customerPhone,
+            currentView: 'tracking',
+            selectedOrderId: order.id,
+            logs: capLogs([
+              {
+                id: uid('log'),
+                user: data.customerName,
+                action: 'Nuevo pedido (offline)',
+                detail: `Código ${order.code} - Total ${order.total}`,
+                date: Date.now(),
+              },
+              ...s.logs,
+            ]),
+          }));
+          return order;
+        }
+      }) as any,
 
       updateOrder: (id, patch) =>
         set((s) => ({
           orders: s.orders.map((o) => (o.id === id ? { ...o, ...patch } : o)),
         })),
 
-      setOrderState: (id, state) =>
-        set((s) => {
-          const user = s.currentEmployee?.name || 'Sistema';
-          const order = s.orders.find((o) => o.id === id);
-          if (!order) return s;
-          const patch: Partial<Order> = { state };
-          if (state === 'confirmado') patch.confirmedAt = Date.now();
-          if (state === 'entregado') patch.deliveredAt = Date.now();
-          return {
-            orders: s.orders.map((o) => (o.id === id ? { ...o, ...patch } : o)),
-            logs: capLogs([
-              {
-                id: uid('log'),
-                user,
-                action: 'Cambio de estado',
-                detail: `Pedido ${order.code}: ${state}`,
-                date: Date.now(),
-              },
-              ...s.logs,
-            ]),
-          };
-        }),
+      setOrderState: (async (id: string, state: OrderState) => {
+        const user = get().currentEmployee?.name || 'Sistema';
+        const order = get().orders.find((o) => o.id === id);
+        if (!order) return;
 
-      setOrderDelivery: (id, delivery) =>
-        set((s) => {
-          const user = s.currentEmployee?.name || 'Sistema';
-          const order = s.orders.find((o) => o.id === id);
-          if (!order) return s;
-          // Validar que delivery sea un número >= 0
-          const safeDelivery = Math.max(0, Number.isFinite(delivery) ? delivery : 0);
-          // Total = subtotal + extras - discount + delivery + surcharge
-          const newTotal = Math.max(0, order.subtotal + order.extras - order.discount + safeDelivery + order.surcharge);
-          return {
-            orders: s.orders.map((o) =>
-              o.id === id ? { ...o, delivery: safeDelivery, total: newTotal } : o
-            ),
-            logs: capLogs([
-              {
-                id: uid('log'),
-                user,
-                action: 'Cambio de domicilio',
-                detail: `Pedido ${order.code}: domicilio = ${safeDelivery} CUP`,
-                date: Date.now(),
-              },
-              ...s.logs,
-            ]),
-          };
-        }),
+        const patch: Partial<Order> = { state };
+        if (state === 'confirmado') patch.confirmedAt = Date.now();
+        if (state === 'entregado') patch.deliveredAt = Date.now();
+
+        // ===== LLAMAR A LA API (PATCH /api/orders/[id]) =====
+        // El servidor dispara WhatsApp automático según el evento
+        try {
+          await fetch(`/api/orders/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state }),
+          });
+        } catch (e) {
+          // Fallback: solo actualizar localmente
+        }
+
+        set((s) => ({
+          orders: s.orders.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+          logs: capLogs([
+            {
+              id: uid('log'),
+              user,
+              action: 'Cambio de estado',
+              detail: `Pedido ${order.code}: ${state}`,
+              date: Date.now(),
+            },
+            ...s.logs,
+          ]),
+        }));
+      }) as any,
+
+      setOrderDelivery: (async (id: string, delivery: number) => {
+        const user = get().currentEmployee?.name || 'Sistema';
+        const order = get().orders.find((o) => o.id === id);
+        if (!order) return;
+        const safeDelivery = Math.max(0, Number.isFinite(delivery) ? delivery : 0);
+        const newTotal = Math.max(0, order.subtotal + order.extras - order.discount + safeDelivery + order.surcharge);
+
+        // ===== LLAMAR A LA API (PATCH /api/orders/[id]) =====
+        try {
+          await fetch(`/api/orders/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delivery: safeDelivery }),
+          });
+        } catch (e) {
+          // Fallback local
+        }
+
+        set((s) => ({
+          orders: s.orders.map((o) =>
+            o.id === id ? { ...o, delivery: safeDelivery, total: newTotal } : o
+          ),
+          logs: capLogs([
+            {
+              id: uid('log'),
+              user,
+              action: 'Cambio de domicilio',
+              detail: `Pedido ${order.code}: domicilio = ${safeDelivery} CUP`,
+              date: Date.now(),
+            },
+            ...s.logs,
+          ]),
+        }));
+      }) as any,
 
       assignDelivery: (orderId, employeeId) =>
         set((s) => {
@@ -450,60 +535,79 @@ export const useStore = create<Store>()(
       deleteEmployee: (id) =>
         set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
 
-      loginEmployee: async (username: string, password: string) => {
-        // Rate limit
+      loginEmployee: (async (username: string, password: string) => {
+        // Rate limit local
         const rl = checkLoginRateLimit(username);
         if (!rl.allowed) {
           return { ok: false, error: `Demasiados intentos. Espera ${Math.ceil(rl.remainingMs / 1000)}s.` };
         }
-        const emp = get().employees.find(
-          (e) => e.username.toLowerCase() === username.toLowerCase() && e.active
-        );
-        if (!emp) {
-          registerFailedLogin(username);
-          return { ok: false, error: 'Usuario o contraseña incorrectos' };
-        }
-        const passwordOk = await verifyPassword(password, emp.password);
-        if (!passwordOk) {
-          registerFailedLogin(username);
-          return { ok: false, error: 'Usuario o contraseña incorrectos' };
-        }
-        // Login exitoso
-        resetLoginAttempts(username);
-        // Migrar password legacy plain a hash al primer login exitoso
-        let updatedEmployees = get().employees;
-        let employeeForSession: Employee = { ...emp };
-        if (!isHashedPassword(emp.password)) {
-          try {
-            const hashed = await hashPassword(password);
-            updatedEmployees = updatedEmployees.map((x) =>
-              x.id === emp.id ? { ...x, password: hashed } : x
-            );
-            employeeForSession = { ...emp, password: hashed };
-          } catch {
-            // si falla, continuar con password legacy
+
+        // ===== LLAMAR A LA API (POST /api/auth/employee/login) =====
+        try {
+          const res = await fetch('/api/auth/employee/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+          });
+          const result = await res.json();
+          if (!result.ok) {
+            registerFailedLogin(username);
+            return { ok: false, error: result.error || 'Credenciales inválidas' };
           }
+          // Login exitoso: el servidor ya seteó la cookie httpOnly
+          resetLoginAttempts(username);
+          const emp = result.employee as Employee;
+          set((s) => ({
+            currentEmployee: emp,
+            logs: capLogs([
+              {
+                id: uid('log'),
+                user: emp.name,
+                action: 'Inicio de sesión',
+                detail: `Rol: ${emp.role}`,
+                date: Date.now(),
+              },
+              ...s.logs,
+            ]),
+          }));
+          return { ok: true, error: null };
+        } catch (e) {
+          // Fallback: intentar login local (modo demo offline)
+          const emp = get().employees.find(
+            (e) => e.username.toLowerCase() === username.toLowerCase() && e.active
+          );
+          if (!emp) {
+            registerFailedLogin(username);
+            return { ok: false, error: 'Usuario o contraseña incorrectos' };
+          }
+          const passwordOk = await verifyPassword(password, emp.password);
+          if (!passwordOk) {
+            registerFailedLogin(username);
+            return { ok: false, error: 'Usuario o contraseña incorrectos' };
+          }
+          resetLoginAttempts(username);
+          set((s) => ({
+            currentEmployee: { ...emp },
+            logs: capLogs([
+              {
+                id: uid('log'),
+                user: emp.name,
+                action: 'Inicio de sesión (offline)',
+                detail: `Rol: ${emp.role}`,
+                date: Date.now(),
+              },
+              ...s.logs,
+            ]),
+          }));
+          return { ok: true, error: null };
         }
-        set((s) => ({
-          employees: updatedEmployees,
-          currentEmployee: employeeForSession,
-          logs: capLogs([
-            {
-              id: uid('log'),
-              user: employeeForSession.name,
-              action: 'Inicio de sesión',
-              detail: `Rol: ${employeeForSession.role}`,
-              date: Date.now(),
-            },
-            ...s.logs,
-          ]),
-        }));
-        return { ok: true, error: null };
-      },
+      }) as any,
 
       logoutEmployee: () => {
         const emp = get().currentEmployee;
         if (emp) {
+          // ===== LLAMAR A LA API (POST /api/auth/logout) =====
+          fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
           set((s) => ({
             currentEmployee: null,
             currentView: 'home',
@@ -606,45 +710,35 @@ export const useStore = create<Store>()(
       resetAll: () => {
         set({ ...initialState, currentView: 'home' });
       },
-    }),
-    {
-      name: 'los-compas-pwa',
-      version: 2,
-      storage: createJSONStorage(() =>
-        typeof window !== 'undefined' ? localStorage : (undefined as any)
-      ),
-      partialize: (s) => ({
-        categories: s.categories,
-        products: s.products,
-        ingredients: s.ingredients,
-        sizes: s.sizes,
-        combos: s.combos,
-        promotions: s.promotions,
-        appliedPromoCode: s.appliedPromoCode,
-        orders: s.orders,
-        lastCustomerPhone: s.lastCustomerPhone,
-        employees: s.employees,
-        currentEmployee: s.currentEmployee,
-        whatsapp: s.whatsapp,
-        config: s.config,
-        logs: s.logs,
-        currentView: s.currentView,
-      }),
-      migrate: (persisted: any, version: number) => {
-        if (!persisted) return persisted;
-        // v1 -> v2: actualizar logo al nuevo path del logo real.
-        // Las promociones se cargan desde el seed automáticamente (no estaban persistidas en v1).
-        if (version < 2 && persisted.config) {
-          persisted.config.logo = '/logo.png';
-        }
-        // Limpiar campos nulos que pudieran venir de migraciones previas
-        if (persisted.promotions === null) delete persisted.promotions;
-        if (persisted.appliedPromoCode === null) persisted.appliedPromoCode = null;
-        return persisted;
-      },
-    }
-  )
+    })
 );
+
+// ===== Persistencia manual del carrito (sin middleware persist para evitar SSR mismatch) =====
+// Cargar carrito desde localStorage al montar
+if (typeof window !== 'undefined') {
+  try {
+    const saved = localStorage.getItem('los-compas-cart');
+    if (saved) {
+      const { cart, appliedPromoCode, lastCustomerPhone } = JSON.parse(saved);
+      useStore.setState({
+        cart: Array.isArray(cart) ? cart : [],
+        appliedPromoCode: appliedPromoCode || null,
+        lastCustomerPhone: lastCustomerPhone || null,
+      });
+    }
+  } catch {}
+
+  // Guardar carrito en localStorage cuando cambia
+  useStore.subscribe((state) => {
+    try {
+      localStorage.setItem('los-compas-cart', JSON.stringify({
+        cart: state.cart,
+        appliedPromoCode: state.appliedPromoCode,
+        lastCustomerPhone: state.lastCustomerPhone,
+      }));
+    } catch {}
+  });
+}
 
 // ===== Selectores recomendados para componentes =====
 // Para selectores que devuelven objetos, envolver con useShallow:
@@ -668,4 +762,75 @@ function isSameItem(a: CartItem, b: CartItem): boolean {
 
 export function defaultSize(): PizzaSize {
   return 'familiar_42x30';
+}
+
+// ===== Funciones de hidratación desde el backend =====
+// Carga el catálogo (productos, categorías, ingredientes, tamaños, promociones, config, whatsapp)
+// desde /api/catalog y actualiza el store. Útil al montar la app.
+export async function hydrateFromServer(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/catalog');
+    if (!res.ok) return false;
+    const result = await res.json();
+    if (!result.ok || !result.catalog) return false;
+
+    const c = result.catalog;
+    const patch: any = {};
+    if (Array.isArray(c.categories)) patch.categories = c.categories;
+    if (Array.isArray(c.products)) patch.products = c.products;
+    if (Array.isArray(c.ingredients)) patch.ingredients = c.ingredients;
+    if (Array.isArray(c.sizes)) patch.sizes = c.sizes;
+    if (Array.isArray(c.promotions)) patch.promotions = c.promotions;
+    if (Array.isArray(c.whatsappNumbers)) patch.whatsapp = c.whatsappNumbers;
+    if (c.config) patch.config = c.config;
+
+    if (Array.isArray(c.products)) {
+      patch.combos = c.products.filter((p: any) => p.isCombo);
+    }
+
+    useStore.setState(patch);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Refresca la lista de pedidos desde el servidor
+// (empleados ven todos, clientes ven solo los suyos - el servidor decide según la sesión)
+export async function refreshOrders(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/orders');
+    if (!res.ok) return false;
+    const result = await res.json();
+    if (!result.ok || !Array.isArray(result.orders)) return false;
+    // Parsear items JSON string en cada pedido
+    const orders = result.orders.map((o: any) => ({
+      ...o,
+      items: typeof o.items === 'string' ? JSON.parse(o.items) : o.items,
+      createdAt: typeof o.createdAt === 'string' ? new Date(o.createdAt).getTime() : o.createdAt,
+      confirmedAt: o.confirmedAt ? (typeof o.confirmedAt === 'string' ? new Date(o.confirmedAt).getTime() : o.confirmedAt) : undefined,
+      deliveredAt: o.deliveredAt ? (typeof o.deliveredAt === 'string' ? new Date(o.deliveredAt).getTime() : o.deliveredAt) : undefined,
+      validFrom: undefined, validTo: undefined,
+    }));
+    useStore.setState({ orders });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Verifica sesión existente (cookie httpOnly) en el servidor
+export async function checkServerSession(): Promise<void> {
+  try {
+    const res = await fetch('/api/auth/me');
+    if (!res.ok) return;
+    const result = await res.json();
+    if (result.ok && result.session) {
+      if (result.session.type === 'employee') {
+        useStore.setState({ currentEmployee: result.session.employee });
+      }
+    }
+  } catch (e) {
+    // Silencioso: si falla, no hacer nada
+  }
 }
