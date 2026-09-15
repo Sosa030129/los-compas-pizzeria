@@ -113,3 +113,181 @@ export function whatsappLink(phone: string, message: string): string {
   const clean = phone.replace(/[^\d]/g, '');
   return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
 }
+
+// ===== Cálculo de promociones =====
+
+import type { CartItem, Promotion, Product } from './types';
+
+// Verifica si una promoción está vigente (fecha activa)
+export function isPromotionActive(p: Promotion, now = Date.now()): boolean {
+  return p.active && p.validFrom <= now && p.validTo >= now;
+}
+
+// Filtra solo promociones activas vigentes
+export function activePromotions(promotions: Promotion[], now = Date.now()): Promotion[] {
+  return promotions.filter((p) => isPromotionActive(p, now));
+}
+
+// Valida un código promocional: devuelve la promoción si aplica
+export function findPromotionByCode(promotions: Promotion[], code: string, now = Date.now()): Promotion | null {
+  if (!code) return null;
+  const upper = code.trim().toUpperCase();
+  return (
+    activePromotions(promotions, now).find((p) => p.code?.toUpperCase() === upper) || null
+  );
+}
+
+// Verifica si una promoción aplica a un item (según appliesTo)
+export function promotionAppliesToItem(p: Promotion, item: CartItem, products: Product[]): boolean {
+  switch (p.appliesTo) {
+    case 'all':
+      return true;
+    case 'category':
+      if (!p.categoryId) return false;
+      const prod = products.find((pr) => pr.id === item.productId);
+      return prod?.category === p.categoryId;
+    case 'product':
+      return item.productId === p.productId;
+    default:
+      return false;
+  }
+}
+
+export interface PromotionResult {
+  promotion: Promotion;
+  discount: number;            // monto descontado en CUP
+  description: string;         // texto amigable: "-15% = -X CUP"
+  freeItem?: CartItem;         // si la promo agrega un producto gratis
+}
+
+// Aplica promociones al carrito. Devuelve todas las que aplicaron.
+// - bundle: por cada `bundleBuyQty` items de la categoría, regala `bundleGetQty` (descuenta el unitPrice)
+// - percent: descuento porcentual sobre subtotal+extras de los items aplicables
+// - fixed: descuento fijo si hay item aplicable
+// - free_product: si supera `value`, agrega un producto gratis
+export function applyPromotions(
+  cart: CartItem[],
+  promotions: Promotion[],
+  products: Product[],
+  appliedCode: string | null,
+  now = Date.now(),
+): { results: PromotionResult[]; totalDiscount: number; freeItems: CartItem[] } {
+  const results: PromotionResult[] = [];
+  let totalDiscount = 0;
+  const freeItems: CartItem[] = [];
+
+  const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+  const extras = cart.reduce((s, i) => s + i.extrasTotal * i.qty, 0);
+  const grandTotal = subtotal + extras;
+
+  // 1. Promociones automáticas (sin código) que aplican al carrito
+  const automatic = activePromotions(promotions, now).filter((p) => !p.code);
+
+  for (const p of automatic) {
+    const r = computeSinglePromotion(p, cart, products, grandTotal, now);
+    if (r && r.discount > 0) {
+      results.push(r);
+      totalDiscount += r.discount;
+    } else if (r && r.freeItem) {
+      results.push(r);
+      freeItems.push(r.freeItem);
+    }
+  }
+
+  // 2. Promoción por código (solo una a la vez)
+  if (appliedCode) {
+    const p = findPromotionByCode(promotions, appliedCode, now);
+    if (p) {
+      const r = computeSinglePromotion(p, cart, products, grandTotal, now);
+      if (r && (r.discount > 0 || r.freeItem)) {
+        results.push(r);
+        if (r.discount > 0) totalDiscount += r.discount;
+        if (r.freeItem) freeItems.push(r.freeItem);
+      }
+    }
+  }
+
+  return { results, totalDiscount, freeItems };
+}
+
+function computeSinglePromotion(
+  p: Promotion,
+  cart: CartItem[],
+  products: Product[],
+  grandTotal: number,
+  _now: number,
+): PromotionResult | null {
+  switch (p.type) {
+    case 'percent': {
+      // Solo aplica a items que correspondan (all/category/product)
+      const applicable = cart.filter((i) => promotionAppliesToItem(p, i, products));
+      if (applicable.length === 0) return null;
+      const subtotal = applicable.reduce(
+        (s, i) => s + (i.unitPrice + i.extrasTotal) * i.qty,
+        0,
+      );
+      const discount = Math.round((subtotal * p.value) / 100);
+      return {
+        promotion: p,
+        discount,
+        description: `-${p.value}% (${p.name}): -${discount.toLocaleString('es-CU')} CUP`,
+      };
+    }
+    case 'fixed': {
+      // Solo si hay items aplicables
+      const applicable = cart.filter((i) => promotionAppliesToItem(p, i, products));
+      if (applicable.length === 0) return null;
+      const discount = p.value;
+      return {
+        promotion: p,
+        discount,
+        description: `-${discount.toLocaleString('es-CU')} CUP (${p.name})`,
+      };
+    }
+    case 'free_product': {
+      // Si el total supera el umbral, regalar el producto
+      if (grandTotal < p.value) return null;
+      if (!p.freeProductId) return null;
+      const prod = products.find((pr) => pr.id === p.freeProductId);
+      if (!prod) return null;
+      const freeItem: CartItem = {
+        id: `free_${p.id}_${Date.now()}`,
+        productId: prod.id,
+        name: `${prod.name} (GRATIS)`,
+        emoji: prod.emoji,
+        unitPrice: 0,
+        qty: 1,
+        extrasTotal: 0,
+        notes: `Promo: ${p.name}`,
+      };
+      return {
+        promotion: p,
+        discount: 0,
+        description: `${prod.name} GRATIS (${p.name})`,
+        freeItem,
+      };
+    }
+    case 'bundle': {
+      // Compra bundleBuyQty, lleva bundleGetQty gratis
+      // Para simplificar: contamos items aplicables y por cada (buyQty) par,
+      // damos el descuento de (getQty) items gratis (precio = unitPrice promedio).
+      const applicable = cart.filter((i) => promotionAppliesToItem(p, i, products));
+      if (applicable.length === 0) return null;
+      const totalQty = applicable.reduce((s, i) => s + i.qty, 0);
+      const buyQty = p.bundleBuyQty || 1;
+      const getQty = p.bundleGetQty || 1;
+      const sets = Math.floor(totalQty / (buyQty + getQty - 1)); // cada "set" requiere (buy+get-1) items para dar 1 gratis
+      if (sets === 0) return null;
+      // Calcular precio unitario promedio
+      const avgUnitPrice = applicable.reduce((s, i) => s + i.unitPrice, 0) / applicable.length;
+      const discount = Math.round(avgUnitPrice * sets * getQty);
+      return {
+        promotion: p,
+        discount,
+        description: `2x1 (${p.name}): -${discount.toLocaleString('es-CU')} CUP × ${sets} set(s)`,
+      };
+    }
+    default:
+      return null;
+  }
+}

@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useStore, useShallow } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Check, CreditCard, Banknote, Clock, MapPin, User, Phone, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Check, CreditCard, Banknote, Clock, MapPin, User, Phone, AlertCircle, Tag } from 'lucide-react';
 import {
-  checkOrderTime, isAnyOrderSlotOpen, nextAvailableSlotLabel, formatCUP,
+  checkOrderTime, isAnyOrderSlotOpen, nextAvailableSlotLabel, formatCUP, applyPromotions,
 } from '@/lib/los-compas';
 import type { PaymentMethod, TimeSlot, DeliveryMode } from '@/lib/types';
 import { toast } from 'sonner';
@@ -13,6 +13,12 @@ import { toast } from 'sonner';
 export function CheckoutView() {
   const cart = useStore((s) => s.cart);
   const config = useStore((s) => s.config);
+  const products = useStore((s) => s.products);
+  const promotions = useStore((s) => s.promotions);
+  const appliedPromoCode = useStore((s) => s.appliedPromoCode);
+  const setView = useStore((s) => s.setView);
+  const placeOrder = useStore((s) => s.placeOrder);
+
   const totals = useStore(useShallow((s) => {
     let subtotal = 0, extras = 0;
     for (const item of s.cart) {
@@ -24,8 +30,10 @@ export function CheckoutView() {
     const total = delivery === null ? base : base + delivery;
     return { subtotal, extras, delivery, total };
   }));
-  const setView = useStore((s) => s.setView);
-  const placeOrder = useStore((s) => s.placeOrder);
+
+  // Aplicar promociones
+  const promoResult = applyPromotions(cart, promotions, products, appliedPromoCode);
+  const totalAfterDiscount = Math.max(0, totals.total - promoResult.totalDiscount);
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -42,8 +50,8 @@ export function CheckoutView() {
   const [timeSlot, setTimeSlot] = useState<TimeSlot>(nextSlot.slot);
   const scheduledTime = timeSlot === 'manana' ? config.morningDelivery : config.afternoonDelivery;
 
-  const surcharge = paymentMethod === 'transferencia' ? totals.total * config.transferSurcharge : 0;
-  const totalFinal = totals.total + surcharge;
+  const surcharge = paymentMethod === 'transferencia' ? totalAfterDiscount * config.transferSurcharge : 0;
+  const totalFinal = totalAfterDiscount + surcharge;
 
   const errors: { [k: string]: string } = {};
   if (!name.trim()) errors.name = 'Tu nombre es obligatorio';
@@ -65,6 +73,13 @@ export function CheckoutView() {
       return;
     }
 
+    // Agregar items gratis (productos promocionales) al carrito antes de hacer el pedido
+    if (promoResult.freeItems.length > 0) {
+      for (const fi of promoResult.freeItems) {
+        useStore.getState().addToCart(fi);
+      }
+    }
+
     const order = placeOrder({
       customerName: name.trim(),
       customerPhone: phone.trim(),
@@ -75,7 +90,11 @@ export function CheckoutView() {
       deliveryMode,
       scheduledTime,
       notes: notes.trim(),
+      discount: promoResult.totalDiscount,
     });
+
+    // Limpiar código promocional aplicado
+    useStore.getState().setAppliedPromoCode(null);
 
     toast.success(`Pedido ${order.code} creado`);
     setView('tracking');
@@ -336,6 +355,28 @@ export function CheckoutView() {
                       : formatCUP(totals.delivery)}
                 </span>
               </div>
+
+              {/* Promociones aplicadas */}
+              {promoResult.results.length > 0 && (
+                <div className="border-t border-border pt-1.5 mt-1.5 space-y-1">
+                  {promoResult.results.map((r, i) => (
+                    <div key={i} className="flex justify-between text-green-400">
+                      <span className="flex items-center gap-1 text-xs">
+                        <Tag size={11} /> {r.promotion.emoji} {r.promotion.name}
+                      </span>
+                      <span className="text-xs font-bold">
+                        {r.discount > 0 ? `-${formatCUP(r.discount)}` : 'GRATIS'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {promoResult.totalDiscount > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal con descuento</span>
+                  <span>{formatCUP(totalAfterDiscount)}</span>
+                </div>
+              )}
               {surcharge > 0 && (
                 <div className="flex justify-between text-muted-foreground">
                   <span>Recargo transferencia</span>

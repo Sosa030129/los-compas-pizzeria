@@ -2,8 +2,10 @@
 
 import { useStore, useShallow } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Trash2, ShoppingBag, ChevronLeft, ArrowRight } from 'lucide-react';
-import { formatCUP, ingredientQtyLabel } from '@/lib/los-compas';
+import { Plus, Minus, Trash2, ShoppingBag, ChevronLeft, ArrowRight, Tag, X } from 'lucide-react';
+import {
+  formatCUP, ingredientQtyLabel, applyPromotions, findPromotionByCode,
+} from '@/lib/los-compas';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -11,9 +13,20 @@ export function CartView() {
   const cart = useStore((s) => s.cart);
   const ingredients = useStore((s) => s.ingredients);
   const sizes = useStore((s) => s.sizes);
+  const products = useStore((s) => s.products);
+  const promotions = useStore((s) => s.promotions);
+  const appliedPromoCode = useStore((s) => s.appliedPromoCode);
+  const setAppliedPromoCode = useStore((s) => s.setAppliedPromoCode);
   const updateCartItem = useStore((s) => s.updateCartItem);
   const removeFromCart = useStore((s) => s.removeFromCart);
   const clearCart = useStore((s) => s.clearCart);
+  const setView = useStore((s) => s.setView);
+  const config = useStore((s) => s.config);
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [showCodeInput, setShowCodeInput] = useState(false);
+
   const totals = useStore(useShallow((s) => {
     let subtotal = 0, extras = 0;
     for (const item of s.cart) {
@@ -25,10 +38,9 @@ export function CartView() {
     const total = delivery === null ? base : base + delivery;
     return { subtotal, extras, delivery, total };
   }));
-  const setView = useStore((s) => s.setView);
-  const config = useStore((s) => s.config);
 
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const promoResult = applyPromotions(cart, promotions, products, appliedPromoCode);
+  const finalTotal = Math.max(0, totals.total - promoResult.totalDiscount);
 
   if (cart.length === 0) {
     return (
@@ -194,11 +206,123 @@ export function CartView() {
                 Costo base sugerido: {formatCUP(config.deliveryBase)}
               </p>
             )}
+
+            {/* Promociones aplicadas */}
+            {promoResult.results.length > 0 && (
+              <div className="border-t border-border pt-2 mt-2 space-y-1">
+                {promoResult.results.map((r, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex justify-between text-green-400"
+                  >
+                    <span className="flex items-center gap-1 text-xs">
+                      <Tag size={11} /> {r.promotion.emoji} {r.promotion.name}
+                    </span>
+                    <span className="text-xs font-bold">
+                      {r.discount > 0 ? `-${formatCUP(r.discount)}` : 'GRATIS'}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
             <div className="flex justify-between font-cartoon text-base text-primary border-t border-border pt-2 mt-2">
               <span>Total</span>
-              <span>{formatCUP(totals.total)}</span>
+              <span>
+                {promoResult.totalDiscount > 0 ? (
+                  <span className="flex items-center gap-2">
+                    <span className="line-through text-muted-foreground text-xs">
+                      {formatCUP(totals.total)}
+                    </span>
+                    {formatCUP(finalTotal)}
+                  </span>
+                ) : (
+                  formatCUP(totals.total)
+                )}
+              </span>
             </div>
           </div>
+        </div>
+
+        {/* Código promocional */}
+        <div className="mt-3">
+          {showCodeInput ? (
+            <div className="cartoon-border bg-card rounded-2xl p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Tag size={14} className="text-primary" />
+                <h4 className="text-xs font-bold">¿Tienes un código promocional?</h4>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  placeholder="PROMO15"
+                  className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-sm uppercase placeholder:normal-case"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && promoInput.trim()) {
+                      const p = findPromotionByCode(promotions, promoInput);
+                      if (p) {
+                        setAppliedPromoCode(promoInput.trim().toUpperCase());
+                        toast.success(`Código ${promoInput.trim().toUpperCase()} aplicado: ${p.name}`);
+                        setShowCodeInput(false);
+                        setPromoInput('');
+                      } else {
+                        toast.error('Código inválido o expirado');
+                      }
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    if (!promoInput.trim()) return;
+                    const p = findPromotionByCode(promotions, promoInput);
+                    if (p) {
+                      setAppliedPromoCode(promoInput.trim().toUpperCase());
+                      toast.success(`Código ${promoInput.trim().toUpperCase()} aplicado: ${p.name}`);
+                      setShowCodeInput(false);
+                      setPromoInput('');
+                    } else {
+                      toast.error('Código inválido o expirado');
+                    }
+                  }}
+                  className="bg-primary text-primary-foreground px-3 py-2 rounded-xl text-xs font-bold"
+                >
+                  Aplicar
+                </button>
+                <button
+                  onClick={() => { setShowCodeInput(false); setPromoInput(''); }}
+                  className="bg-secondary px-2 py-2 rounded-xl"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          ) : appliedPromoCode ? (
+            <div className="cartoon-border bg-primary/10 border-primary/30 rounded-2xl p-3 flex items-center gap-2">
+              <Tag size={14} className="text-primary" />
+              <span className="text-xs flex-1">
+                Código <strong className="text-primary">{appliedPromoCode}</strong> aplicado
+              </span>
+              <button
+                onClick={() => {
+                  setAppliedPromoCode(null);
+                  toast('Código removido');
+                }}
+                className="text-destructive hover:underline text-xs"
+              >
+                <X size={14} className="inline" /> Quitar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowCodeInput(true)}
+              className="w-full text-xs text-primary font-bold py-2 hover:underline"
+            >
+              + Aplicar código promocional
+            </button>
+          )}
         </div>
       </div>
 
@@ -206,8 +330,12 @@ export function CartView() {
       <div className="fixed bottom-16 inset-x-0 z-30 bg-card/95 backdrop-blur-md border-t-2 border-primary/30 px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <div className="flex-1">
-            <p className="text-[11px] text-muted-foreground">Total provisional</p>
-            <p className="font-cartoon text-base text-primary">{formatCUP(totals.total)}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {promoResult.totalDiscount > 0
+                ? `Ahorras ${formatCUP(promoResult.totalDiscount)} 🎉`
+                : 'Total provisional'}
+            </p>
+            <p className="font-cartoon text-base text-primary">{formatCUP(finalTotal)}</p>
           </div>
           <button
             onClick={() => setView('checkout')}

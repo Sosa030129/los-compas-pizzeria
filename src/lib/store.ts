@@ -18,6 +18,7 @@ import type {
   OrderState,
   PaymentMethod,
   Product,
+  Promotion,
   TimeSlot,
   View,
   WhatsAppNumber,
@@ -25,7 +26,7 @@ import type {
   PizzaSize,
 } from './types';
 import {
-  CATEGORIES, COMBOS, CONFIG, EMPLOYEES, INGREDIENTS, PRODUCTS, SIZES, WHATSAPP,
+  CATEGORIES, COMBOS, CONFIG, EMPLOYEES, INGREDIENTS, PRODUCTS, PROMOTIONS, SIZES, WHATSAPP,
 } from './seed';
 import { uid, shortCode } from './los-compas';
 
@@ -40,6 +41,9 @@ interface StoreActions {
   removeFromCart: (id: string) => void;
   clearCart: () => void;
 
+  // Promociones (código cliente)
+  setAppliedPromoCode: (code: string | null) => void;
+
   // Pedidos
   placeOrder: (data: {
     customerName: string;
@@ -51,6 +55,7 @@ interface StoreActions {
     deliveryMode: 'domicilio' | 'recogida';
     scheduledTime: string;
     notes?: string;
+    discount?: number;
   }) => Order;
   updateOrder: (id: string, patch: Partial<Order>) => void;
   setOrderState: (id: string, state: OrderState) => void;
@@ -71,6 +76,11 @@ interface StoreActions {
   saveCategory: (c: Category) => void;
   toggleCategoryVisible: (id: string) => void;
   deleteCategory: (id: string) => void;
+
+  // Promociones (admin)
+  savePromotion: (p: Promotion) => void;
+  togglePromotionActive: (id: string) => void;
+  deletePromotion: (id: string) => void;
 
   // Empleados
   saveEmployee: (e: Employee) => void;
@@ -102,6 +112,8 @@ const initialState: AppState = {
   ingredients: INGREDIENTS,
   sizes: SIZES,
   combos: COMBOS,
+  promotions: PROMOTIONS,
+  appliedPromoCode: null,
   cart: [],
   orders: [],
   employees: EMPLOYEES,
@@ -176,6 +188,8 @@ export const useStore = create<Store>()(
           subtotal += item.unitPrice * item.qty;
           extras += item.extrasTotal * item.qty;
         }
+        const base = subtotal + extras;
+        const discount = data.discount || 0;
         const order: Order = {
           id: uid('order'),
           code: shortCode(),
@@ -187,7 +201,8 @@ export const useStore = create<Store>()(
           subtotal,
           extras,
           delivery: data.deliveryMode === 'domicilio' ? null : 0,
-          total: subtotal + extras,
+          discount,
+          total: Math.max(0, base - discount),
           paymentMethod: data.paymentMethod,
           timeSlot: data.timeSlot,
           deliveryMode: data.deliveryMode,
@@ -248,7 +263,7 @@ export const useStore = create<Store>()(
           const user = s.currentEmployee?.name || 'Sistema';
           const order = s.orders.find((o) => o.id === id);
           if (!order) return s;
-          const newTotal = order.subtotal + order.extras + delivery;
+          const newTotal = Math.max(0, order.subtotal + order.extras - order.discount + delivery);
           return {
             orders: s.orders.map((o) =>
               o.id === id ? { ...o, delivery, total: newTotal } : o
@@ -335,6 +350,28 @@ export const useStore = create<Store>()(
       deleteCategory: (id) =>
         set((s) => ({ categories: s.categories.filter((c) => c.id !== id) })),
 
+      // ===== Promociones =====
+      setAppliedPromoCode: (code) => set({ appliedPromoCode: code }),
+
+      savePromotion: (p) =>
+        set((s) => {
+          const exists = s.promotions.find((x) => x.id === p.id);
+          if (exists) {
+            return { promotions: s.promotions.map((x) => (x.id === p.id ? p : x)) };
+          }
+          return { promotions: [...s.promotions, p] };
+        }),
+
+      togglePromotionActive: (id) =>
+        set((s) => ({
+          promotions: s.promotions.map((p) =>
+            p.id === id ? { ...p, active: !p.active } : p
+          ),
+        })),
+
+      deletePromotion: (id) =>
+        set((s) => ({ promotions: s.promotions.filter((p) => p.id !== id) })),
+
       // ===== Empleados =====
       saveEmployee: (e) =>
         set((s) => {
@@ -344,7 +381,6 @@ export const useStore = create<Store>()(
           }
           return { employees: [...s.employees, e] };
         }),
-
       toggleEmployeeActive: (id) =>
         set((s) => ({
           employees: s.employees.map((e) =>
@@ -440,6 +476,7 @@ export const useStore = create<Store>()(
     }),
     {
       name: 'los-compas-pwa',
+      version: 2,
       storage: createJSONStorage(() =>
         typeof window !== 'undefined' ? localStorage : (undefined as any)
       ),
@@ -449,12 +486,26 @@ export const useStore = create<Store>()(
         ingredients: s.ingredients,
         sizes: s.sizes,
         combos: s.combos,
+        promotions: s.promotions,
+        appliedPromoCode: s.appliedPromoCode,
         orders: s.orders,
         employees: s.employees,
         whatsapp: s.whatsapp,
         config: s.config,
         logs: s.logs,
       }),
+      migrate: (persisted: any, version: number) => {
+        if (!persisted) return persisted;
+        // v1 -> v2: actualizar logo al nuevo path del logo real.
+        // Las promociones se cargan desde el seed automáticamente (no estaban persistidas en v1).
+        if (version < 2 && persisted.config) {
+          persisted.config.logo = '/logo.png';
+        }
+        // Limpiar campos nulos que pudieran venir de migraciones previas
+        if (persisted.promotions === null) delete persisted.promotions;
+        if (persisted.appliedPromoCode === null) persisted.appliedPromoCode = null;
+        return persisted;
+      },
     }
   )
 );

@@ -25,7 +25,7 @@ export function AppHeader({ title, subtitle, onBack, rightAction }: Props) {
           </button>
         )}
         {!onBack && (
-          <img src={config.logo} alt="LOS COMPAS" className="w-9 h-9 rounded-full" />
+          <img src={config.logo} alt="LOS COMPAS" className="w-9 h-9 rounded-full object-cover border border-primary/30" />
         )}
         <div className="flex-1 min-w-0">
           <h1 className="font-cartoon text-base leading-tight text-foreground truncate">

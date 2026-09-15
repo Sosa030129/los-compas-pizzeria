@@ -324,6 +324,12 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
                 {order.delivery === null ? 'Pendiente' : formatCUP(order.delivery)}
               </span>
             </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-green-400">
+                <span>Descuento</span>
+                <span>-{formatCUP(order.discount)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-cartoon text-base text-primary border-t border-border pt-2 mt-2">
               <span>Total</span><span>{formatCUP(order.total)}</span>
             </div>

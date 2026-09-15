@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Pizza, ShoppingBag, Clock, MapPin, ChefHat, Bike } from 'lucide-react';
 import { isAnyOrderSlotOpen } from '@/lib/los-compas';
 import { PizzaVisualizer } from '@/components/pizza-visualizer';
+import { PromotionsBanner } from '@/components/promotions-banner';
 
 export function HomeView() {
   const config = useStore((s) => s.config);
@@ -36,46 +37,65 @@ export function HomeView() {
             className="w-56 h-56"
           />
         </div>
-        <div className="relative max-w-3xl mx-auto px-4 py-8">
-          <div className="inline-flex items-center gap-1.5 bg-primary/15 text-primary px-2.5 py-1 rounded-full text-[11px] font-bold mb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-soft" />
-            {orderOpen ? 'ABIERTO AHORA' : 'FUERA DE HORARIO'}
-          </div>
-          <h1 className="font-cartoon text-3xl sm:text-4xl leading-[1.05] text-foreground">
-            🍕 LOS <span className="text-primary">COMPAS</span>
-            <br />
-            PIZZERÍA
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md">
-            Pide tu pizza favorita en {config.city}. Sabor cartoon, ingredientes abundantes y entrega a domicilio.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => setView('menu')}
-              className="bg-primary text-primary-foreground px-5 py-2.5 rounded-full font-bold text-sm hover:opacity-95 transition animate-button-pop shadow-lg shadow-primary/20"
-            >
-              Ver Menú
-            </button>
-            <button
-              onClick={() => setView('builder')}
-              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-full font-bold text-sm hover:bg-secondary/70 transition border border-border"
-            >
-              <Pizza size={16} className="inline mr-1.5 -mt-0.5" /> Armar mi pizza
-            </button>
-          </div>
+        <div className="relative max-w-3xl mx-auto px-4 py-8 flex flex-col items-center text-center sm:flex-row sm:items-center sm:text-left">
+          {/* Logo real */}
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0, rotate: -10 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{ type: 'spring', damping: 12 }}
+            className="shrink-0 mb-4 sm:mb-0 sm:mr-5"
+          >
+            <img
+              src={config.logo}
+              alt="LOS COMPAS PIZZERÍA"
+              className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-2 border-primary/40 shadow-2xl shadow-primary/20"
+            />
+          </motion.div>
 
-          <div className="mt-5 flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <Clock size={14} className="text-primary" />
-              Mañana {config.morningStart}–{config.morningEnd} · Tardes {config.afternoonStart}–{config.afternoonEnd}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin size={14} className="text-primary" />
-              {config.address}
-            </span>
+          <div className="flex-1">
+            <div className="inline-flex items-center gap-1.5 bg-primary/15 text-primary px-2.5 py-1 rounded-full text-[11px] font-bold mb-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-soft" />
+              {orderOpen ? 'ABIERTO AHORA' : 'FUERA DE HORARIO'}
+            </div>
+            <h1 className="font-cartoon text-3xl sm:text-4xl leading-[1.05] text-foreground">
+              PIZZERÍA
+              <br />
+              <span className="text-primary">en Sancti Spíritus</span>
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground max-w-md">
+              Pide tu pizza favorita. Sabor cartoon, ingredientes abundantes y entrega a domicilio.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
+              <button
+                onClick={() => setView('menu')}
+                className="bg-primary text-primary-foreground px-5 py-2.5 rounded-full font-bold text-sm hover:opacity-95 transition animate-button-pop shadow-lg shadow-primary/20"
+              >
+                Ver Menú
+              </button>
+              <button
+                onClick={() => setView('builder')}
+                className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-full font-bold text-sm hover:bg-secondary/70 transition border border-border"
+              >
+                <Pizza size={16} className="inline mr-1.5 -mt-0.5" /> Armar mi pizza
+              </button>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3 text-xs text-muted-foreground justify-center sm:justify-start">
+              <span className="inline-flex items-center gap-1.5">
+                <Clock size={14} className="text-primary" />
+                Mañana {config.morningStart}–{config.morningEnd} · Tardes {config.afternoonStart}–{config.afternoonEnd}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin size={14} className="text-primary" />
+                {config.address}
+              </span>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* Banner de promociones */}
+      <PromotionsBanner />
 
       {/* Categorías */}
       <section className="max-w-3xl mx-auto px-4 py-6">

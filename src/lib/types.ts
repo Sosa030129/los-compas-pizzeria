@@ -14,6 +14,32 @@ export type View =
 
 export type CategoryId = 'pizzas' | 'comidas' | 'postres' | 'bebidas' | 'combos' | 'ingredientes';
 
+// ===== Promociones =====
+export type PromotionType =
+  | 'percent'        // descuento porcentual sobre el total
+  | 'fixed'          // monto fijo de descuento
+  | 'free_product'   // producto gratis al superar un monto
+  | 'bundle';        // 2x1 o X+Y (compra X, lleva Y)
+
+export interface Promotion {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  type: PromotionType;
+  value: number;          // porcentaje (0-100) o monto fijo o umbral mínimo
+  freeProductId?: string;  // para free_product / bundle
+  bundleBuyQty?: number;   // para bundle: cuántos hay que comprar
+  bundleGetQty?: number;   // para bundle: cuántos gratis lleva
+  validFrom: number;       // timestamp inicio
+  validTo: number;         // timestamp fin
+  active: boolean;
+  code?: string;           // código promocional opcional
+  appliesTo: 'all' | 'category' | 'product';
+  categoryId?: string;
+  productId?: string;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -108,7 +134,8 @@ export interface Order {
   subtotal: number;
   extras: number;
   delivery: number | null;  // null = pendiente de confirmar
-  total: number;
+  discount: number;         // monto descontado por promociones
+  total: number;            // subtotal + extras + delivery - discount
   paymentMethod: PaymentMethod;
   timeSlot: TimeSlot;
   deliveryMode: DeliveryMode;
@@ -185,6 +212,10 @@ export interface AppState {
   ingredients: Ingredient[];
   sizes: SizeOption[];
   combos: Product[];
+
+  // Promociones
+  promotions: Promotion[];
+  appliedPromoCode: string | null;
 
   // Carrito actual
   cart: CartItem[];

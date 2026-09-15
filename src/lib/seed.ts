@@ -4,6 +4,7 @@ import type {
   Employee,
   Ingredient,
   Product,
+  Promotion,
   SizeOption,
   WhatsAppNumber,
 } from './types';
@@ -438,7 +439,7 @@ export const CONFIG: BusinessConfig = {
   name: 'LOS COMPAS',
   city: 'Sancti Spíritus, Cuba',
   currency: 'CUP',
-  logo: '/icon.svg',
+  logo: '/logo.png',
   phone: '+53 55000000',
   address: 'Sancti Spíritus, Cuba',
   deliveryBase: 250,
@@ -450,6 +451,71 @@ export const CONFIG: BusinessConfig = {
   afternoonDelivery: '06:30 PM - 07:00 PM',
   transferSurcharge: 0.30,
 };
+
+// Promociones semilla - las fechas se calculan dinámicamente para que siempre
+// estén activas cuando se carga la app por primera vez
+const now = Date.now();
+const ONE_DAY = 24 * 60 * 60 * 1000;
+const ONE_WEEK = 7 * ONE_DAY;
+
+export const PROMOTIONS: Promotion[] = [
+  {
+    id: 'promo_combo_2x1_pizzas',
+    name: '2x1 en Pizzas Medianas',
+    description: 'Compra 2 pizzas medianas 25cm y llévate 2 (¡la 2da es gratis!). Solo en horario de almuerzo.',
+    emoji: '🍕',
+    type: 'bundle',
+    value: 0,
+    bundleBuyQty: 1,
+    bundleGetQty: 1,
+    validFrom: now,
+    validTo: now + ONE_WEEK * 4,
+    active: true,
+    code: '2X1PIZZA',
+    appliesTo: 'category',
+    categoryId: 'pizzas',
+  },
+  {
+    id: 'promo_miercoles_15pct',
+    name: 'Miércoles Promocional -15%',
+    description: 'Todos los miércoles, 15% de descuento en todo tu pedido. Solo con código PROMO15.',
+    emoji: '🎉',
+    type: 'percent',
+    value: 15,
+    validFrom: now,
+    validTo: now + ONE_WEEK * 8,
+    active: true,
+    code: 'PROMO15',
+    appliesTo: 'all',
+  },
+  {
+    id: 'promo_bebida_gratis',
+    name: 'Bebida gratis en pedidos +3000 CUP',
+    description: 'En pedidos superiores a 3000 CUP, te regalamos un refresco nacional.',
+    emoji: '🥤',
+    type: 'free_product',
+    value: 3000,
+    freeProductId: 'refrescos',
+    validFrom: now,
+    validTo: now + ONE_WEEK * 4,
+    active: true,
+    appliesTo: 'all',
+  },
+  {
+    id: 'promo_combo_familiar_ahorro',
+    name: 'Ahorro Extra en Combo Familiar -500 CUP',
+    description: 'Llévate el Combo Familiar con 500 CUP de descuento directo.',
+    emoji: '💰',
+    type: 'fixed',
+    value: 500,
+    validFrom: now,
+    validTo: now + ONE_WEEK * 2,
+    active: true,
+    code: 'COMBO500',
+    appliesTo: 'product',
+    productId: 'combo_familiar',
+  },
+];
 
 // Estados de pedido para visualización
 export const ORDER_STATES = [

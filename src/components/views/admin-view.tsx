@@ -6,15 +6,16 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Package, Salad, Users, MessageCircle, Settings, LogOut,
   ShoppingBag, Plus, Pencil, Trash2, Save, AlertTriangle,
-  Bike, History, Tags,
+  Bike, History, Tags, Percent,
 } from 'lucide-react';
+import { StatsCharts } from '@/components/stats-charts';
 import {
   formatCUP, formatDateTime, getStateInfo, uid,
 } from '@/lib/los-compas';
 import { toast } from 'sonner';
-import type { Product, Employee, WhatsAppNumber, Permission, Role, Ingredient } from '@/lib/types';
+import type { Product, Employee, WhatsAppNumber, Permission, Role, Ingredient, Promotion, PromotionType } from '@/lib/types';
 
-type AdminTab = 'dashboard' | 'orders' | 'products' | 'ingredients' | 'categories' | 'employees' | 'whatsapp' | 'config' | 'logs';
+type AdminTab = 'dashboard' | 'orders' | 'products' | 'ingredients' | 'categories' | 'promotions' | 'combos' | 'employees' | 'whatsapp' | 'config' | 'logs';
 
 export function AdminView() {
   const currentEmployee = useStore((s) => s.currentEmployee);
@@ -33,6 +34,8 @@ export function AdminView() {
     { id: 'products', label: 'Productos', icon: Package },
     { id: 'ingredients', label: 'Ingredientes', icon: Salad },
     { id: 'categories', label: 'Categorías', icon: Tags },
+    { id: 'promotions', label: 'Promociones', icon: Percent },
+    { id: 'combos', label: 'Combos', icon: ShoppingBag },
     { id: 'employees', label: 'Empleados', icon: Users },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
     { id: 'config', label: 'Configuración', icon: Settings },
@@ -44,7 +47,7 @@ export function AdminView() {
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
-          <img src="/icon.svg" alt="Logo" className="w-9 h-9 rounded-full" />
+          <img src="/logo.png" alt="Logo" className="w-9 h-9 rounded-full object-cover border border-primary/30" />
           <div className="flex-1 min-w-0">
             <h1 className="font-cartoon text-base leading-tight">Panel Admin</h1>
             <p className="text-[11px] text-muted-foreground truncate">
@@ -88,6 +91,8 @@ export function AdminView() {
         {tab === 'products' && <ProductsTab />}
         {tab === 'ingredients' && <IngredientsTab />}
         {tab === 'categories' && <CategoriesTab />}
+        {tab === 'promotions' && <PromotionsTab />}
+        {tab === 'combos' && <CombosTab />}
         {tab === 'employees' && <EmployeesTab />}
         {tab === 'whatsapp' && <WhatsAppTab />}
         {tab === 'config' && <ConfigTab />}
@@ -153,6 +158,9 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
           ))}
         </div>
       </div>
+
+      {/* Gráficos avanzados */}
+      <StatsCharts />
 
       {/* Alertas */}
       {(stats.agotados > 0 || stats.ingredientesBaja > 0 || stats.nuevos > 0) && (
@@ -1220,6 +1228,615 @@ function LogsTab() {
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+// ===== Promociones =====
+function PromotionsTab() {
+  const promotions = useStore((s) => s.promotions);
+  const categories = useStore((s) => s.categories);
+  const products = useStore((s) => s.products);
+  const savePromotion = useStore((s) => s.savePromotion);
+  const togglePromotionActive = useStore((s) => s.togglePromotionActive);
+  const deletePromotion = useStore((s) => s.deletePromotion);
+
+  const [editing, setEditing] = useState<Promotion | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const PROMO_TYPES: { id: PromotionType; label: string; emoji: string; help: string }[] = [
+    { id: 'percent', label: 'Porcentaje', emoji: '➖', help: 'Descuento % sobre el total aplicable' },
+    { id: 'fixed', label: 'Monto fijo', emoji: '💰', help: 'Descuento fijo en CUP' },
+    { id: 'free_product', label: 'Producto gratis', emoji: '🎁', help: 'Regala un producto al superar umbral' },
+    { id: 'bundle', label: '2x1 / Bundle', emoji: '🎯', help: 'Compra X, lleva Y' },
+  ];
+
+  const now = Date.now();
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => { setEditing(null); setShowForm(true); }}
+        className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5"
+      >
+        <Plus size={16} /> Nueva promoción
+      </button>
+
+      <div className="bg-primary/10 border border-primary/30 rounded-2xl p-3 text-xs text-primary">
+        💡 Las promociones sin código se aplican automáticamente al carrito.
+        Las que tienen código requieren que el cliente lo ingrese en checkout.
+      </div>
+
+      {promotions.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">
+          <div className="text-4xl mb-2">🎉</div>
+          <p className="text-sm">No hay promociones creadas</p>
+        </div>
+      ) : (
+        promotions.map((p) => {
+          const isVigente = p.active && p.validFrom <= now && p.validTo >= now;
+          const typeLabel = PROMO_TYPES.find((t) => t.id === p.type)?.label || p.type;
+          const valueLabel =
+            p.type === 'percent' ? `-${p.value}%` :
+            p.type === 'fixed' ? `-${p.value} CUP` :
+            p.type === 'free_product' ? `+${p.value} CUP umbral` :
+            `${p.bundleBuyQty}+${p.bundleGetQty}`;
+          return (
+            <div key={p.id} className={`cartoon-border bg-card rounded-xl p-3 ${!isVigente ? 'opacity-60' : ''}`}>
+              <div className="flex items-start gap-3">
+                <span className="text-3xl">{p.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold leading-tight">{p.name}</p>
+                    {p.code && (
+                      <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold">
+                        {p.code}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+                      {typeLabel}: {valueLabel}
+                    </span>
+                    <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+                      {p.appliesTo === 'all' ? 'Todo' :
+                       p.appliesTo === 'category' ? `Cat: ${categories.find((c) => c.id === p.categoryId)?.name || '—'}` :
+                       `Prod: ${products.find((pr) => pr.id === p.productId)?.name || '—'}`}
+                    </span>
+                    <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+                      📅 {new Date(p.validFrom).toLocaleDateString('es-CU')} → {new Date(p.validTo).toLocaleDateString('es-CU')}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => togglePromotionActive(p.id)}
+                    className={`text-[10px] font-bold px-2 py-1 rounded-full ${isVigente ? 'bg-green-700/30 text-green-400' : 'bg-destructive/20 text-destructive'}`}
+                  >
+                    {isVigente ? 'Vigente' : 'Inactiva'}
+                  </button>
+                  <button
+                    onClick={() => { setEditing(p); setShowForm(true); }}
+                    className="bg-secondary w-8 h-8 rounded-full flex items-center justify-center"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`¿Eliminar promoción ${p.name}?`)) {
+                        deletePromotion(p.id);
+                        toast.success('Promoción eliminada');
+                      }
+                    }}
+                    className="bg-destructive/20 text-destructive w-8 h-8 rounded-full flex items-center justify-center"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+
+      {showForm && (
+        <PromotionForm
+          initial={editing}
+          categories={categories}
+          products={products}
+          onClose={() => { setShowForm(false); setEditing(null); }}
+          onSave={(p) => {
+            savePromotion(p);
+            toast.success(editing ? 'Promoción actualizada' : 'Promoción creada');
+            setShowForm(false);
+            setEditing(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function PromotionForm({
+  initial, categories, products, onClose, onSave,
+}: {
+  initial: Promotion | null;
+  categories: { id: string; name: string }[];
+  products: { id: string; name: string; emoji: string }[];
+  onClose: () => void;
+  onSave: (p: Promotion) => void;
+}) {
+  const today = new Date();
+  const inFourWeeks = new Date(today.getTime() + 4 * 7 * 24 * 60 * 60 * 1000);
+
+  function dateToInput(d: Date): string {
+    return d.toISOString().slice(0, 10);
+  }
+  function inputToDate(s: string): number {
+    const d = new Date(s + 'T00:00:00');
+    return d.getTime();
+  }
+
+  const [name, setName] = useState(initial?.name || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [emoji, setEmoji] = useState(initial?.emoji || '🎉');
+  const [type, setType] = useState<PromotionType>(initial?.type || 'percent');
+  const [value, setValue] = useState(initial?.value || 10);
+  const [freeProductId, setFreeProductId] = useState(initial?.freeProductId || products[0]?.id || '');
+  const [bundleBuyQty, setBundleBuyQty] = useState(initial?.bundleBuyQty || 1);
+  const [bundleGetQty, setBundleGetQty] = useState(initial?.bundleGetQty || 1);
+  const [code, setCode] = useState(initial?.code || '');
+  const [validFrom, setValidFrom] = useState(dateToInput(initial ? new Date(initial.validFrom) : today));
+  const [validTo, setValidTo] = useState(dateToInput(initial ? new Date(initial.validTo) : inFourWeeks));
+  const [appliesTo, setAppliesTo] = useState<'all' | 'category' | 'product'>(initial?.appliesTo || 'all');
+  const [categoryId, setCategoryId] = useState(initial?.categoryId || categories[0]?.id || '');
+  const [productId, setProductId] = useState(initial?.productId || products[0]?.id || '');
+
+  const PROMO_TYPES: { id: PromotionType; label: string; emoji: string; help: string }[] = [
+    { id: 'percent', label: 'Porcentaje', emoji: '➖', help: 'Descuento % sobre el total aplicable' },
+    { id: 'fixed', label: 'Monto fijo', emoji: '💰', help: 'Descuento fijo en CUP' },
+    { id: 'free_product', label: 'Producto gratis', emoji: '🎁', help: 'Regala un producto al superar umbral' },
+    { id: 'bundle', label: '2x1 / Bundle', emoji: '🎯', help: 'Compra X, lleva Y' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+      <div className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-border max-h-[90vh] overflow-y-auto">
+        <h3 className="font-cartoon text-base mb-3">{initial ? 'Editar promoción' : 'Nueva promoción'}</h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-[auto_1fr] gap-2">
+            <FormRow label="Emoji">
+              <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm text-center" />
+            </FormRow>
+            <FormRow label="Nombre">
+              <input value={name} onChange={(e) => setName(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            </FormRow>
+          </div>
+          <FormRow label="Descripción">
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm min-h-[60px]" />
+          </FormRow>
+          <FormRow label="Tipo de promoción">
+            <div className="grid grid-cols-2 gap-1.5">
+              {PROMO_TYPES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setType(t.id)}
+                  className={`p-2 rounded-xl border-2 text-left transition ${
+                    type === t.id ? 'border-primary bg-primary/10' : 'border-border bg-background'
+                  }`}
+                >
+                  <div className="text-sm font-bold">{t.emoji} {t.label}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{t.help}</div>
+                </button>
+              ))}
+            </div>
+          </FormRow>
+          {type === 'percent' && (
+            <FormRow label="Porcentaje de descuento (1-100)">
+              <input type="number" min="1" max="100" value={value} onChange={(e) => setValue(parseInt(e.target.value) || 0)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            </FormRow>
+          )}
+          {type === 'fixed' && (
+            <FormRow label="Monto fijo (CUP)">
+              <input type="number" value={value} onChange={(e) => setValue(parseInt(e.target.value) || 0)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            </FormRow>
+          )}
+          {type === 'free_product' && (
+            <>
+              <FormRow label="Umbral mínimo (CUP) para activar">
+                <input type="number" value={value} onChange={(e) => setValue(parseInt(e.target.value) || 0)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+              </FormRow>
+              <FormRow label="Producto a regalar">
+                <select value={freeProductId} onChange={(e) => setFreeProductId(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm">
+                  {products.map((p) => <option key={p.id} value={p.id}>{p.emoji} {p.name}</option>)}
+                </select>
+              </FormRow>
+            </>
+          )}
+          {type === 'bundle' && (
+            <div className="grid grid-cols-2 gap-2">
+              <FormRow label="Compra (cant.)">
+                <input type="number" min="1" value={bundleBuyQty} onChange={(e) => setBundleBuyQty(parseInt(e.target.value) || 1)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+              </FormRow>
+              <FormRow label="Lleva gratis (cant.)">
+                <input type="number" min="1" value={bundleGetQty} onChange={(e) => setBundleGetQty(parseInt(e.target.value) || 1)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+              </FormRow>
+            </div>
+          )}
+          <FormRow label="Aplica a">
+            <select value={appliesTo} onChange={(e) => setAppliesTo(e.target.value as any)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm">
+              <option value="all">Todo el pedido</option>
+              <option value="category">Una categoría</option>
+              <option value="product">Un producto específico</option>
+            </select>
+          </FormRow>
+          {appliesTo === 'category' && (
+            <FormRow label="Categoría">
+              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm">
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </FormRow>
+          )}
+          {appliesTo === 'product' && (
+            <FormRow label="Producto">
+              <select value={productId} onChange={(e) => setProductId(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm">
+                {products.map((p) => <option key={p.id} value={p.id}>{p.emoji} {p.name}</option>)}
+              </select>
+            </FormRow>
+          )}
+          <FormRow label="Código promocional (opcional, vacío = automática)">
+            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="PROMO15" className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm uppercase" />
+          </FormRow>
+          <div className="grid grid-cols-2 gap-2">
+            <FormRow label="Vigente desde">
+              <input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            </FormRow>
+            <FormRow label="Vigente hasta">
+              <input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            </FormRow>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button onClick={onClose} className="flex-1 bg-secondary py-2.5 rounded-xl font-bold text-sm">Cancelar</button>
+            <button
+              onClick={() => {
+                if (!name.trim()) {
+                  toast.error('El nombre es obligatorio');
+                  return;
+                }
+                onSave({
+                  id: initial?.id || uid('promo'),
+                  name: name.trim(),
+                  description: description.trim(),
+                  emoji,
+                  type,
+                  value,
+                  freeProductId: type === 'free_product' ? freeProductId : undefined,
+                  bundleBuyQty: type === 'bundle' ? bundleBuyQty : undefined,
+                  bundleGetQty: type === 'bundle' ? bundleGetQty : undefined,
+                  validFrom: inputToDate(validFrom),
+                  validTo: inputToDate(validTo) + (24 * 60 * 60 * 1000 - 1),
+                  active: initial?.active ?? true,
+                  code: code.trim() || undefined,
+                  appliesTo,
+                  categoryId: appliesTo === 'category' ? categoryId : undefined,
+                  productId: appliesTo === 'product' ? productId : undefined,
+                });
+              }}
+              className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm"
+            >
+              <Save size={14} className="inline mr-1" /> Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== Combos Builder =====
+function CombosTab() {
+  const products = useStore((s) => s.products);
+  const saveProduct = useStore((s) => s.saveProduct);
+  const toggleAvailable = useStore((s) => s.toggleProductAvailable);
+  const deleteProduct = useStore((s) => s.deleteProduct);
+
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  // Filtrar combos
+  const combos = products.filter((p) => p.isCombo);
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => { setEditing(null); setShowForm(true); }}
+        className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5"
+      >
+        <Plus size={16} /> Nuevo combo
+      </button>
+
+      <div className="bg-primary/10 border border-primary/30 rounded-2xl p-3 text-xs text-primary">
+        💡 Arma un combo eligiendo los productos que lo componen y un precio especial.
+        El cliente verá el ahorro comparado con comprar los productos por separado.
+      </div>
+
+      {combos.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">
+          <div className="text-4xl mb-2">🎉</div>
+          <p className="text-sm">No hay combos creados</p>
+        </div>
+      ) : (
+        combos.map((c) => {
+          const includedProducts = (c.comboItems || [])
+            .map((id) => products.find((p) => p.id === id))
+            .filter(Boolean) as Product[];
+          // Calcular precio individual sumado
+          const precioIndividual = includedProducts.reduce((s, p) => s + p.price, 0);
+          const ahorro = precioIndividual - c.price;
+          const ahorroPct = precioIndividual > 0 ? Math.round((ahorro / precioIndividual) * 100) : 0;
+          return (
+            <div key={c.id} className={`cartoon-border bg-card rounded-xl p-3 ${!c.available ? 'opacity-60' : ''}`}>
+              <div className="flex items-start gap-3">
+                <span className="text-3xl">{c.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold leading-tight">{c.name}</p>
+                  <p className="text-[11px] text-muted-foreground line-clamp-1">{c.description}</p>
+
+                  {/* Items incluidos */}
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {includedProducts.map((p, i) => (
+                      <span key={i} className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+                        {p.emoji} {p.name}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Precios */}
+                  <div className="mt-2 flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground line-through">{formatCUP(precioIndividual)}</span>
+                    <span className="font-bold text-primary">{formatCUP(c.price)}</span>
+                    {ahorro > 0 && (
+                      <span className="bg-green-700/30 text-green-400 px-1.5 py-0.5 rounded font-bold text-[10px]">
+                        -{ahorroPct}% ({formatCUP(ahorro)})
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => toggleAvailable(c.id)}
+                    className={`text-[10px] font-bold px-2 py-1 rounded-full ${c.available ? 'bg-green-700/30 text-green-400' : 'bg-destructive/20 text-destructive'}`}
+                  >
+                    {c.available ? '✓' : 'Off'}
+                  </button>
+                  <button
+                    onClick={() => { setEditing(c); setShowForm(true); }}
+                    className="bg-secondary w-8 h-8 rounded-full flex items-center justify-center"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`¿Eliminar combo ${c.name}?`)) {
+                        deleteProduct(c.id);
+                        toast.success('Combo eliminado');
+                      }
+                    }}
+                    className="bg-destructive/20 text-destructive w-8 h-8 rounded-full flex items-center justify-center"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+
+      {showForm && (
+        <ComboForm
+          initial={editing}
+          products={products.filter((p) => !p.isCombo)}
+          onClose={() => { setShowForm(false); setEditing(null); }}
+          onSave={(combo) => {
+            saveProduct(combo);
+            toast.success(editing ? 'Combo actualizado' : 'Combo creado');
+            setShowForm(false);
+            setEditing(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ComboForm({
+  initial, products, onClose, onSave,
+}: {
+  initial: Product | null;
+  products: Product[];
+  onClose: () => void;
+  onSave: (p: Product) => void;
+}) {
+  const [name, setName] = useState(initial?.name || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [emoji, setEmoji] = useState(initial?.emoji || '🎉');
+  const [price, setPrice] = useState(initial?.price || 0);
+  // Cantidad de cada producto en el combo: { productId: qty }
+  const [items, setItems] = useState<Record<string, number>>(() => {
+    const init: Record<string, number> = {};
+    if (initial?.comboItems) {
+      for (const pid of initial.comboItems) {
+        init[pid] = (init[pid] || 0) + 1;
+      }
+    }
+    return init;
+  });
+
+  // Precio individual sumado de los productos seleccionados
+  const precioIndividual = Object.entries(items).reduce((sum, [pid, qty]) => {
+    const p = products.find((x) => x.id === pid);
+    return sum + (p ? p.price * qty : 0);
+  }, 0);
+  const ahorro = precioIndividual - price;
+  const ahorroPct = precioIndividual > 0 ? Math.round((ahorro / precioIndividual) * 100) : 0;
+
+  const toggleProduct = (pid: string) => {
+    setItems((prev) => {
+      const next = { ...prev };
+      if (next[pid]) {
+        next[pid] = next[pid] + 1;
+      } else {
+        next[pid] = 1;
+      }
+      return next;
+    });
+  };
+
+  const decrement = (pid: string) => {
+    setItems((prev) => {
+      const next = { ...prev };
+      if (next[pid]) {
+        next[pid] = next[pid] - 1;
+        if (next[pid] <= 0) delete next[pid];
+      }
+      return next;
+    });
+  };
+
+  const totalSelected = Object.values(items).reduce((s, q) => s + q, 0);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+      <div className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-border max-h-[90vh] overflow-y-auto">
+        <h3 className="font-cartoon text-base mb-3">{initial ? 'Editar combo' : 'Nuevo combo'}</h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-[auto_1fr] gap-2">
+            <FormRow label="Emoji">
+              <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm text-center" />
+            </FormRow>
+            <FormRow label="Nombre del combo">
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Combo Familiar" className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            </FormRow>
+          </div>
+          <FormRow label="Descripción">
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Pizza + 2 bebidas + postre" className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm min-h-[60px]" />
+          </FormRow>
+
+          {/* Selector de productos */}
+          <div>
+            <p className="text-[11px] font-bold text-muted-foreground mb-2">
+              Productos incluidos ({totalSelected} items):
+            </p>
+            <div className="max-h-64 overflow-y-auto space-y-1.5 bg-background/40 rounded-xl p-2">
+              {products.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">No hay productos disponibles</p>
+              ) : (
+                products.map((p) => {
+                  const qty = items[p.id] || 0;
+                  return (
+                    <div key={p.id} className={`flex items-center gap-2 p-2 rounded-lg ${qty > 0 ? 'bg-primary/15 border border-primary/30' : 'border border-border'}`}>
+                      <span className="text-xl">{p.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold leading-tight truncate">{p.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{formatCUP(p.price)}</p>
+                      </div>
+                      {qty > 0 && (
+                        <button
+                          onClick={() => decrement(p.id)}
+                          className="bg-secondary text-secondary-foreground w-7 h-7 rounded-full flex items-center justify-center text-sm"
+                        >
+                          −
+                        </button>
+                      )}
+                      <span className="text-xs font-bold w-5 text-center">{qty}</span>
+                      <button
+                        onClick={() => toggleProduct(p.id)}
+                        className="bg-primary text-primary-foreground w-7 h-7 rounded-full flex items-center justify-center text-sm"
+                      >
+                        +
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Precio especial */}
+          <FormRow label="Precio especial del combo (CUP)">
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(parseInt(e.target.value) || 0)}
+              className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm"
+            />
+          </FormRow>
+
+          {/* Comparativa */}
+          {totalSelected > 0 && (
+            <div className="bg-secondary/40 rounded-xl p-3 space-y-1 text-xs">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Precio individual sumado</span>
+                <span className="line-through">{formatCUP(precioIndividual)}</span>
+              </div>
+              <div className="flex justify-between text-primary font-bold">
+                <span>Precio del combo</span>
+                <span>{formatCUP(price)}</span>
+              </div>
+              {ahorro > 0 ? (
+                <div className="flex justify-between text-green-400 font-bold border-t border-border pt-1 mt-1">
+                  <span>Cliente ahorra</span>
+                  <span>{formatCUP(ahorro)} (-{ahorroPct}%)</span>
+                </div>
+              ) : ahorro < 0 ? (
+                <div className="flex justify-between text-destructive font-bold border-t border-border pt-1 mt-1">
+                  <span>Combo más caro que individual</span>
+                  <span>+{formatCUP(-ahorro)}</span>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <button onClick={onClose} className="flex-1 bg-secondary py-2.5 rounded-xl font-bold text-sm">Cancelar</button>
+            <button
+              onClick={() => {
+                if (!name.trim()) {
+                  toast.error('El nombre es obligatorio');
+                  return;
+                }
+                if (totalSelected === 0) {
+                  toast.error('Agrega al menos un producto al combo');
+                  return;
+                }
+                // Convertir items (cantidad) a comboItems (lista plana)
+                const comboItems: string[] = [];
+                for (const [pid, qty] of Object.entries(items)) {
+                  for (let i = 0; i < qty; i++) comboItems.push(pid);
+                }
+                onSave({
+                  id: initial?.id || uid('combo'),
+                  name: name.trim(),
+                  description: description.trim(),
+                  category: 'combos',
+                  emoji,
+                  price,
+                  available: true,
+                  prepTime: 25,
+                  isCombo: true,
+                  comboItems,
+                });
+              }}
+              className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm"
+            >
+              <Save size={14} className="inline mr-1" /> Guardar combo
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
