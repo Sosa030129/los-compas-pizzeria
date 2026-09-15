@@ -5,7 +5,7 @@ import { useStore, useShallow } from '@/lib/store';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Check, CreditCard, Banknote, Clock, MapPin, User, Phone, AlertCircle, Tag } from 'lucide-react';
 import {
-  checkOrderTime, isAnyOrderSlotOpen, nextAvailableSlotLabel, formatCUP, applyPromotions,
+  checkOrderTime, isAnyOrderSlotOpen, nextAvailableSlotLabel, formatCUP, applyPromotions, isValidPhone,
 } from '@/lib/los-compas';
 import type { PaymentMethod, TimeSlot, DeliveryMode } from '@/lib/types';
 import { toast } from 'sonner';
@@ -56,7 +56,7 @@ export function CheckoutView() {
   const errors: { [k: string]: string } = {};
   if (!name.trim()) errors.name = 'Tu nombre es obligatorio';
   if (!phone.trim()) errors.phone = 'Tu teléfono es obligatorio';
-  if (!/^[+\d][\d\s-]{6,}$/.test(phone.trim())) errors.phone = 'Teléfono inválido';
+  else if (!isValidPhone(phone.trim())) errors.phone = 'Teléfono inválido (usa formato +53 5 1234567)';
   if (deliveryMode === 'domicilio' && !address.trim()) errors.address = 'Tu dirección es obligatoria';
 
   const [touched, setTouched] = useState(false);

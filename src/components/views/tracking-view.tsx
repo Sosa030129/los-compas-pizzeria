@@ -2,7 +2,7 @@
 
 import { useStore } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { Package, Clock, MapPin, Phone, ChevronRight, Search } from 'lucide-react';
+import { Package, Clock, MapPin, Phone, ChevronRight, ChevronLeft, Search } from 'lucide-react';
 import {
   formatCUP, formatDateTime, getStateInfo, getOrderProgress,
 } from '@/lib/los-compas';
@@ -148,9 +148,10 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <button
             onClick={onBack}
-            className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center"
+            aria-label="Volver a la lista de pedidos"
+            className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            ←
+            <ChevronLeft size={20} />
           </button>
           <h1 className="font-cartoon text-base flex-1">Pedido {order.code}</h1>
         </div>
@@ -159,7 +160,8 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
       <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
         {/* Estado visual */}
         <motion.div
-          className="rounded-3xl p-5 text-center"
+          key={order.state} // re-animar al cambiar de estado
+          className={`rounded-3xl p-5 text-center ${order.state === 'recibido' ? 'animate-order-confirm' : ''}`}
           style={{ backgroundColor: `${st.color}22`, border: `2px solid ${st.color}` }}
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -185,8 +187,19 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
                     ? 'Estamos preparando tu pedido'
                     : order.state === 'confirmado'
                       ? 'Pedido confirmado, pronto a preparar'
-                      : 'Hemos recibido tu pedido'}
+                      : 'Hemos recibido tu pedido. ¡Gracias por elegirnos!'}
           </p>
+          {/* Mensaje extra cuando recién creado */}
+          {order.state === 'recibido' && (
+            <motion.p
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mt-2 text-[11px] text-primary font-bold"
+            >
+              🎉 ¡Pedido confirmado! Te avisaremos cuando cambie el estado.
+            </motion.p>
+          )}
         </motion.div>
 
         {/* Timeline */}

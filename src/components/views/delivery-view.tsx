@@ -2,6 +2,7 @@
 
 import { useStore } from '@/lib/store';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 import { LogOut, Bike, MapPin, Phone, Package, User, Clock, Navigation } from 'lucide-react';
 import { formatCUP, formatDateTime, getStateInfo, whatsappLink } from '@/lib/los-compas';
 import { toast } from 'sonner';
@@ -17,10 +18,14 @@ export function DeliveryView() {
 
   const [filter, setFilter] = useState<'assigned' | 'enroute' | 'delivered'>('assigned');
 
-  if (!currentEmployee) {
-    setView('login');
-    return null;
-  }
+  // Redirigir al login si no hay sesión
+  useEffect(() => {
+    if (!currentEmployee) {
+      setView('login');
+    }
+  }, [currentEmployee, setView]);
+
+  if (!currentEmployee) return null;
 
   // Pedidos asignados a este repartidor
   const myOrders = orders.filter((o) =>

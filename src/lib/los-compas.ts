@@ -118,6 +118,17 @@ export function whatsappLink(phone: string, message: string): string {
 
 import type { CartItem, Promotion, Product } from './types';
 
+// Valida teléfono (formatos Cuba + internacional)
+// Acepta: +53 5 1234567, +5351234567, 55123456, +53 55000000, etc.
+export function isValidPhone(phone: string): boolean {
+  const clean = phone.replace(/[\s-]/g, '');
+  // Con código de país (+XX) y al menos 6 dígitos
+  if (/^\+\d{1,3}\d{6,12}$/.test(clean)) return true;
+  // Sin código de país, al menos 6 dígitos
+  if (/^\d{6,12}$/.test(clean)) return true;
+  return false;
+}
+
 // Verifica si una promoción está vigente (fecha activa)
 export function isPromotionActive(p: Promotion, now = Date.now()): boolean {
   return p.active && p.validFrom <= now && p.validTo >= now;
@@ -268,23 +279,28 @@ function computeSinglePromotion(
       };
     }
     case 'bundle': {
-      // Compra bundleBuyQty, lleva bundleGetQty gratis
-      // Para simplificar: contamos items aplicables y por cada (buyQty) par,
-      // damos el descuento de (getQty) items gratis (precio = unitPrice promedio).
+      // Promo bundle tipo "compra N, llévate M (N+M totales, pagas N, M gratis)".
+      // Ejemplo clásico 2x1: bundleBuyQty=1 (paga 1), bundleGetQty=1 (1 gratis)
+      // → por cada 2 items en el carrito, 1 es gratis.
       const applicable = cart.filter((i) => promotionAppliesToItem(p, i, products));
       if (applicable.length === 0) return null;
       const totalQty = applicable.reduce((s, i) => s + i.qty, 0);
       const buyQty = p.bundleBuyQty || 1;
       const getQty = p.bundleGetQty || 1;
-      const sets = Math.floor(totalQty / (buyQty + getQty - 1)); // cada "set" requiere (buy+get-1) items para dar 1 gratis
+      // Necesitas tener (buyQty + getQty) items para activar 1 set
+      const sets = Math.floor(totalQty / (buyQty + getQty));
       if (sets === 0) return null;
-      // Calcular precio unitario promedio
-      const avgUnitPrice = applicable.reduce((s, i) => s + i.unitPrice, 0) / applicable.length;
+      // Precio unitario promedio (ponderado por cantidad)
+      const totalValue = applicable.reduce(
+        (s, i) => s + (i.unitPrice + i.extrasTotal) * i.qty,
+        0,
+      );
+      const avgUnitPrice = totalValue / totalQty;
       const discount = Math.round(avgUnitPrice * sets * getQty);
       return {
         promotion: p,
         discount,
-        description: `2x1 (${p.name}): -${discount.toLocaleString('es-CU')} CUP × ${sets} set(s)`,
+        description: `${buyQty}+${getQty} gratis (${p.name}): -${discount.toLocaleString('es-CU')} CUP × ${sets} set(s)`,
       };
     }
     default:

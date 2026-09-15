@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
+import { useConfirm } from '@/components/confirm-provider';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Package, Salad, Users, MessageCircle, Settings, LogOut,
   ShoppingBag, Plus, Pencil, Trash2, Save, AlertTriangle,
-  Bike, History, Tags, Percent,
+  Bike, History, Tags, Percent, Download, Upload, HelpCircle, RotateCcw,
 } from 'lucide-react';
 import { StatsCharts } from '@/components/stats-charts';
 import {
@@ -15,7 +16,7 @@ import {
 import { toast } from 'sonner';
 import type { Product, Employee, WhatsAppNumber, Permission, Role, Ingredient, Promotion, PromotionType } from '@/lib/types';
 
-type AdminTab = 'dashboard' | 'orders' | 'products' | 'ingredients' | 'categories' | 'promotions' | 'combos' | 'employees' | 'whatsapp' | 'config' | 'logs';
+type AdminTab = 'dashboard' | 'orders' | 'products' | 'ingredients' | 'categories' | 'promotions' | 'combos' | 'employees' | 'whatsapp' | 'config' | 'logs' | 'backup' | 'help';
 
 export function AdminView() {
   const currentEmployee = useStore((s) => s.currentEmployee);
@@ -23,10 +24,14 @@ export function AdminView() {
   const setView = useStore((s) => s.setView);
   const [tab, setTab] = useState<AdminTab>('dashboard');
 
-  if (!currentEmployee) {
-    setView('login');
-    return null;
-  }
+  // Redirigir al login si no hay sesión (en efecto, no durante el render)
+  useEffect(() => {
+    if (!currentEmployee) {
+      setView('login');
+    }
+  }, [currentEmployee, setView]);
+
+  if (!currentEmployee) return null;
 
   const tabs: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -39,6 +44,8 @@ export function AdminView() {
     { id: 'employees', label: 'Empleados', icon: Users },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
     { id: 'config', label: 'Configuración', icon: Settings },
+    { id: 'backup', label: 'Backup', icon: Download },
+    { id: 'help', label: 'Ayuda', icon: HelpCircle },
     { id: 'logs', label: 'Historial', icon: History },
   ];
 
@@ -96,6 +103,8 @@ export function AdminView() {
         {tab === 'employees' && <EmployeesTab />}
         {tab === 'whatsapp' && <WhatsAppTab />}
         {tab === 'config' && <ConfigTab />}
+        {tab === 'backup' && <BackupTab />}
+        {tab === 'help' && <HelpTab />}
         {tab === 'logs' && <LogsTab />}
       </div>
     </div>
@@ -472,6 +481,7 @@ function ProductsTab() {
   const saveProduct = useStore((s) => s.saveProduct);
   const toggleAvailable = useStore((s) => s.toggleProductAvailable);
   const deleteProduct = useStore((s) => s.deleteProduct);
+  const confirm = useConfirm();
 
   const [editing, setEditing] = useState<Product | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -517,8 +527,14 @@ function ProductsTab() {
                     <Pencil size={13} />
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm(`¿Eliminar ${p.name}?`)) {
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: `¿Eliminar ${p.name}?`,
+                        description: 'Esta acción no se puede deshacer.',
+                        confirmText: 'Eliminar',
+                        destructive: true,
+                      });
+                      if (ok) {
                         deleteProduct(p.id);
                         toast.success('Producto eliminado');
                       }
@@ -640,6 +656,7 @@ function IngredientsTab() {
   const saveIngredient = useStore((s) => s.saveIngredient);
   const toggleAvailable = useStore((s) => s.toggleIngredientAvailable);
   const deleteIngredient = useStore((s) => s.deleteIngredient);
+  const confirm = useConfirm();
 
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -674,8 +691,14 @@ function IngredientsTab() {
                 <Pencil size={13} />
               </button>
               <button
-                onClick={() => {
-                  if (confirm(`¿Eliminar ${i.name}?`)) {
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `¿Eliminar ${i.name}?`,
+                    description: 'Esta acción no se puede deshacer.',
+                    confirmText: 'Eliminar',
+                    destructive: true,
+                  });
+                  if (ok) {
                     deleteIngredient(i.id);
                     toast.success('Ingrediente eliminado');
                   }
@@ -785,6 +808,7 @@ function CategoriesTab() {
   const saveCategory = useStore((s) => s.saveCategory);
   const toggleVisible = useStore((s) => s.toggleCategoryVisible);
   const deleteCategory = useStore((s) => s.deleteCategory);
+  const confirm = useConfirm();
 
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('🍕');
@@ -832,8 +856,14 @@ function CategoriesTab() {
               {c.visible ? 'Visible' : 'Oculta'}
             </button>
             <button
-              onClick={() => {
-                if (confirm(`¿Eliminar ${c.name}?`)) {
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `¿Eliminar ${c.name}?`,
+                  description: 'Esta acción no se puede deshacer.',
+                  confirmText: 'Eliminar',
+                  destructive: true,
+                });
+                if (ok) {
                   deleteCategory(c.id);
                   toast.success('Categoría eliminada');
                 }
@@ -855,6 +885,7 @@ function EmployeesTab() {
   const saveEmployee = useStore((s) => s.saveEmployee);
   const toggleActive = useStore((s) => s.toggleEmployeeActive);
   const deleteEmployee = useStore((s) => s.deleteEmployee);
+  const confirm = useConfirm();
 
   const [editing, setEditing] = useState<Employee | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -889,12 +920,18 @@ function EmployeesTab() {
                 <Pencil size={13} />
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (e.role === 'admin') {
                     toast.error('No se puede eliminar el administrador principal');
                     return;
                   }
-                  if (confirm(`¿Eliminar ${e.name}?`)) {
+                  const ok = await confirm({
+                    title: `¿Eliminar ${e.name}?`,
+                    description: 'Esta acción no se puede deshacer.',
+                    confirmText: 'Eliminar',
+                    destructive: true,
+                  });
+                  if (ok) {
                     deleteEmployee(e.id);
                     toast.success('Empleado eliminado');
                   }
@@ -1035,6 +1072,7 @@ function WhatsAppTab() {
   const saveWhatsApp = useStore((s) => s.saveWhatsApp);
   const toggleActive = useStore((s) => s.toggleWhatsAppActive);
   const deleteWhatsApp = useStore((s) => s.deleteWhatsApp);
+  const confirm = useConfirm();
 
   const [showNew, setShowNew] = useState(false);
   const [number, setNumber] = useState('');
@@ -1068,8 +1106,14 @@ function WhatsAppTab() {
             {w.active ? 'Activo' : 'Inactivo'}
           </button>
           <button
-            onClick={() => {
-              if (confirm(`¿Eliminar ${w.name}?`)) {
+            onClick={async () => {
+              const ok = await confirm({
+                title: `¿Eliminar ${w.name}?`,
+                description: 'Esta acción no se puede deshacer.',
+                confirmText: 'Eliminar',
+                destructive: true,
+              });
+              if (ok) {
                 deleteWhatsApp(w.id);
                 toast.success('Número eliminado');
               }
@@ -1240,6 +1284,7 @@ function PromotionsTab() {
   const savePromotion = useStore((s) => s.savePromotion);
   const togglePromotionActive = useStore((s) => s.togglePromotionActive);
   const deletePromotion = useStore((s) => s.deletePromotion);
+  const confirm = useConfirm();
 
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -1323,8 +1368,14 @@ function PromotionsTab() {
                     <Pencil size={13} />
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm(`¿Eliminar promoción ${p.name}?`)) {
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: `¿Eliminar promoción ${p.name}?`,
+                        description: 'Esta acción no se puede deshacer.',
+                        confirmText: 'Eliminar',
+                        destructive: true,
+                      });
+                      if (ok) {
                         deletePromotion(p.id);
                         toast.success('Promoción eliminada');
                       }
@@ -1541,6 +1592,7 @@ function CombosTab() {
   const saveProduct = useStore((s) => s.saveProduct);
   const toggleAvailable = useStore((s) => s.toggleProductAvailable);
   const deleteProduct = useStore((s) => s.deleteProduct);
+  const confirm = useConfirm();
 
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -1618,8 +1670,14 @@ function CombosTab() {
                     <Pencil size={13} />
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm(`¿Eliminar combo ${c.name}?`)) {
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: `¿Eliminar combo ${c.name}?`,
+                        description: 'Esta acción no se puede deshacer.',
+                        confirmText: 'Eliminar',
+                        destructive: true,
+                      });
+                      if (ok) {
                         deleteProduct(c.id);
                         toast.success('Combo eliminado');
                       }
@@ -1836,6 +1894,334 @@ function ComboForm({
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== Backup / Restore =====
+function BackupTab() {
+  const exportData = useStore((s) => s.exportData);
+  const importData = useStore((s) => s.importData);
+  const resetAll = useStore((s) => s.resetAll);
+  const orders = useStore((s) => s.orders);
+  const products = useStore((s) => s.products);
+  const employees = useStore((s) => s.employees);
+  const promotions = useStore((s) => s.promotions);
+  const config = useStore((s) => s.config);
+  const confirm = useConfirm();
+
+  const handleExport = () => {
+    try {
+      const json = exportData();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = `los-compas-backup-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Backup descargado correctamente');
+    } catch (e) {
+      toast.error('Error al exportar');
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const ok = importData(text);
+      if (ok) {
+        toast.success('Datos restaurados correctamente');
+      } else {
+        toast.error('Archivo de backup inválido');
+      }
+    } catch (err) {
+      toast.error('Error al leer el archivo');
+    }
+    e.target.value = ''; // reset
+  };
+
+  const handleReset = async () => {
+    const ok = await confirm({
+      title: '¿Restablecer todos los datos?',
+      description: 'Se perderán todos los pedidos, productos, ingredientes, empleados y configuraciones. Esta acción no se puede deshacer. Considera hacer un backup primero.',
+      confirmText: 'Sí, restablecer todo',
+      destructive: true,
+    });
+    if (ok) {
+      resetAll();
+      toast.success('Datos restablecidos a valores de fábrica');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Stats resumen */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="cartoon-border bg-card rounded-2xl p-3 text-center">
+          <div className="text-2xl mb-1">📦</div>
+          <div className="font-cartoon text-base text-primary">{products.length}</div>
+          <div className="text-[10px] text-muted-foreground">Productos</div>
+        </div>
+        <div className="cartoon-border bg-card rounded-2xl p-3 text-center">
+          <div className="text-2xl mb-1">📋</div>
+          <div className="font-cartoon text-base text-primary">{orders.length}</div>
+          <div className="text-[10px] text-muted-foreground">Pedidos</div>
+        </div>
+        <div className="cartoon-border bg-card rounded-2xl p-3 text-center">
+          <div className="text-2xl mb-1">👥</div>
+          <div className="font-cartoon text-base text-primary">{employees.length}</div>
+          <div className="text-[10px] text-muted-foreground">Empleados</div>
+        </div>
+      </div>
+
+      {/* Exportar */}
+      <div className="cartoon-border bg-card rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <span className="w-12 h-12 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+            <Download size={22} />
+          </span>
+          <div className="flex-1">
+            <h3 className="font-cartoon text-sm">Exportar datos</h3>
+            <p className="text-xs text-muted-foreground mt-1 mb-3">
+              Descarga un archivo JSON con todos los datos de la pizzería:
+              productos, ingredientes, pedidos, empleados, promociones y configuración.
+              Sirve como copia de seguridad o para migrar a otro dispositivo.
+            </p>
+            <button
+              onClick={handleExport}
+              className="bg-primary text-primary-foreground px-4 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 hover:opacity-95 animate-button-pop"
+            >
+              <Download size={16} /> Descargar backup
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Importar */}
+      <div className="cartoon-border bg-card rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <span className="w-12 h-12 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center shrink-0">
+            <Upload size={22} />
+          </span>
+          <div className="flex-1">
+            <h3 className="font-cartoon text-sm">Importar datos</h3>
+            <p className="text-xs text-muted-foreground mt-1 mb-3">
+              Restaura desde un archivo de backup previamente descargado.
+              Se sobreescribirán los datos actuales con los del archivo.
+            </p>
+            <label className="bg-secondary text-secondary-foreground px-4 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 hover:opacity-95 cursor-pointer w-fit">
+              <Upload size={16} /> Seleccionar archivo
+              <input
+                type="file"
+                accept="application/json,.json"
+                onChange={handleImport}
+                className="hidden"
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Reset */}
+      <div className="cartoon-border bg-destructive/10 border-destructive/40 rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <span className="w-12 h-12 rounded-full bg-destructive/20 text-destructive flex items-center justify-center shrink-0">
+            <RotateCcw size={22} />
+          </span>
+          <div className="flex-1">
+            <h3 className="font-cartoon text-sm text-destructive">Restablecer todo</h3>
+            <p className="text-xs text-muted-foreground mt-1 mb-3">
+              Vuelve la app a los valores de fábrica: productos, ingredientes,
+              pedidos, empleados y configuración iniciales. Útil para empezar
+              limpio o si algo se rompió.
+            </p>
+            <button
+              onClick={handleReset}
+              className="bg-destructive text-destructive-foreground px-4 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 hover:opacity-95"
+            >
+              <RotateCcw size={16} /> Restablecer datos
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Info adicional */}
+      <div className="bg-secondary/30 border border-border rounded-2xl p-3 text-[11px] text-muted-foreground">
+        💡 El backup incluye <strong>{products.length}</strong> productos,
+        <strong> {orders.length}</strong> pedidos,
+        <strong> {employees.length}</strong> empleados y
+        <strong> {promotions.length}</strong> promociones.
+        Negocio: <strong>{config.name}</strong> en {config.city}.
+      </div>
+    </div>
+  );
+}
+
+// ===== Ayuda / Manual =====
+function HelpTab() {
+  const sections = [
+    {
+      title: '🏠 Dashboard',
+      icon: '📊',
+      items: [
+        'Muestra KPIs: pedidos hoy, ventas entregadas, ticket promedio',
+        'Gráfico de ventas de los últimos 7 días (solo pedidos entregados)',
+        'Distribución de pedidos por estado (pie chart)',
+        'Horarios fuertes: mañana vs tarde-noche',
+        'Top 5 productos más vendidos',
+        'Alertas: pedidos nuevos sin confirmar, productos agotados',
+      ],
+    },
+    {
+      title: '📋 Pedidos',
+      icon: '🛍️',
+      items: [
+        'Filtra por estado: Todos, Recibido, Confirmado, Preparando, Listo, En camino, Entregado, Cancelado',
+        'Fija el costo de domicilio haciendo click en "Pendiente — Click para confirmar"',
+        'Confirma el pedido para que cocina lo vea en su panel',
+        'Cambia estados: Recibido → Confirmado → Preparando → Listo',
+        'Asigna repartidor cuando el pedido está Listo (solo para domicilio)',
+        'Para recogida en tienda, marca como Entregado directamente',
+        'Cancela pedidos si es necesario',
+      ],
+    },
+    {
+      title: '📦 Productos',
+      icon: '🍕',
+      items: [
+        'Crea productos con nombre, descripción, emoji, categoría, precio y tiempo de preparación',
+        'Marca "Es pizza" para que use el constructor visual',
+        'Activa/Desactiva productos disponibles (los agotados se bloquean para clientes)',
+        'Edita precios y descripciones cuando quieras',
+      ],
+    },
+    {
+      title: '🥬 Ingredientes',
+      icon: '🥬',
+      items: [
+        'Cada ingrediente tiene su color (para el visualizador) y precio por tamaño',
+        'Precios independientes: una porción extra de queso en pizza pequeña = 250 CUP, en familiar = 700 CUP',
+        'Desactiva ingredientes temporalmente si no hay stock',
+      ],
+    },
+    {
+      title: '🏷️ Categorías',
+      icon: '📂',
+      items: [
+        'Crea categorías nuevas (ej: Pastas, Tostones, Pizzas, Comidas, Postres, Bebidas)',
+        'Oculta categorías temporalmente sin borrarlas',
+        'El orden visual se calcula automáticamente',
+      ],
+    },
+    {
+      title: '🎉 Promociones',
+      icon: '🎁',
+      items: [
+        '4 tipos: Porcentaje (%), Monto fijo (CUP), Producto gratis (umbral), Bundle 2x1',
+        'Sin código = automática (se aplica al carrito)',
+        'Con código = el cliente debe ingresarlo en checkout',
+        'Configura fechas de vigencia (desde/hasta)',
+        'Aplica a: todo el pedido, una categoría o un producto específico',
+      ],
+    },
+    {
+      title: '🍔 Combos',
+      icon: '🍔',
+      items: [
+        'Arma un combo eligiendo productos y cantidades con + y −',
+        'Define un precio especial (menor al precio individual sumado)',
+        'El cliente ve cuánto ahorra en porcentaje y monto',
+        'Aparece en el menú del cliente bajo la categoría Combos',
+      ],
+    },
+    {
+      title: '👥 Empleados',
+      icon: '🔐',
+      items: [
+        'Crea empleados con usuario, contraseña y rol',
+        'Roles predefinidos: Administrador, Cocina, Repartidor',
+        'Rol Personalizado: activa permisos individuales (ver pedidos, crear combos, cambiar precios, etc.)',
+        'Activa/Desactiva empleados sin borrarlos',
+        'No se puede eliminar el administrador principal',
+      ],
+    },
+    {
+      title: '💬 WhatsApp',
+      icon: '💬',
+      items: [
+        'Agrega uno o varios números de WhatsApp',
+        'Asigna función: Pedidos, Cocina, Reparto o Todos',
+        'Los repartidores pueden enviar mensaje automático al cliente desde su panel',
+      ],
+    },
+    {
+      title: '⚙️ Configuración',
+      icon: '⚙️',
+      items: [
+        'Edita nombre, ciudad, moneda, dirección y teléfono del negocio',
+        'Configura horarios: mañana (08:00-10:30) y tarde-noche (13:00-16:30)',
+        'Cambia costo base de domicilio (default 250 CUP)',
+        'Ajusta el recargo por transferencia (default 30%)',
+      ],
+    },
+    {
+      title: '💾 Backup',
+      icon: '💾',
+      items: [
+        'Exporta: descarga un archivo JSON con todos los datos',
+        'Importa: restaura desde un backup previo',
+        'Restablecer: vuelve a valores de fábrica (¡haz backup primero!)',
+      ],
+    },
+    {
+      title: '🕐 Historial',
+      icon: '🕐',
+      items: [
+        'Registro de actividad: quién hizo qué y cuándo',
+        'Incluye cambios de estado, precios, sesiones iniciadas/cerradas',
+        'Útil para auditoría',
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="cartoon-border-primary bg-card rounded-2xl p-4">
+        <h3 className="font-cartoon text-base mb-1">📖 Manual del Administrador</h3>
+        <p className="text-xs text-muted-foreground">
+          Bienvenido al panel de administración de LOS COMPAS PIZZERÍA.
+          Aquí puedes gestionar todo el negocio: productos, pedidos, empleados,
+          promociones, combos y configuración. Sin necesidad de tocar código.
+        </p>
+      </div>
+
+      {sections.map((s, i) => (
+        <div key={i} className="cartoon-border bg-card rounded-2xl p-4">
+          <h3 className="font-cartoon text-sm mb-2 flex items-center gap-2">
+            <span className="text-xl">{s.icon}</span> {s.title}
+          </h3>
+          <ul className="space-y-1.5">
+            {s.items.map((item, j) => (
+              <li key={j} className="text-xs text-muted-foreground flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      <div className="bg-secondary/30 border border-border rounded-2xl p-3 text-xs text-muted-foreground">
+        💡 <strong>Tip:</strong> Todo lo que configures aquí se guarda automáticamente
+        en el navegador (localStorage). Usa la pestaña Backup para exportar/importar
+        cuando cambies de dispositivo o quieras hacer una copia de seguridad.
       </div>
     </div>
   );

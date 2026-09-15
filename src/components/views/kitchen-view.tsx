@@ -2,6 +2,7 @@
 
 import { useStore } from '@/lib/store';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 import { LogOut, ChefHat, Clock, MapPin, Phone, Package } from 'lucide-react';
 import { formatCUP, formatDateTime, formatTime, getStateInfo } from '@/lib/los-compas';
 import { toast } from 'sonner';
@@ -18,10 +19,14 @@ export function KitchenView() {
 
   const [filter, setFilter] = useState<'pending' | 'preparing' | 'done'>('pending');
 
-  if (!currentEmployee) {
-    setView('login');
-    return null;
-  }
+  // Redirigir al login si no hay sesión
+  useEffect(() => {
+    if (!currentEmployee) {
+      setView('login');
+    }
+  }, [currentEmployee, setView]);
+
+  if (!currentEmployee) return null;
 
   const pending = orders.filter((o) => ['confirmado', 'recibido'].includes(o.state));
   const preparing = orders.filter((o) => o.state === 'preparando');

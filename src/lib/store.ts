@@ -100,7 +100,9 @@ interface StoreActions {
   // Logs
   addLog: (user: string, action: string, detail: string) => void;
 
-  // Reset
+  // Backup / Restore
+  exportData: () => string;
+  importData: (json: string) => boolean;
   resetAll: () => void;
 }
 
@@ -469,6 +471,52 @@ export const useStore = create<Store>()(
           ],
         })),
 
+      // ===== Backup / Restore =====
+      exportData: () => {
+        const s = get();
+        const data = {
+          version: 2,
+          exportedAt: new Date().toISOString(),
+          business: s.config.name,
+          categories: s.categories,
+          products: s.products,
+          ingredients: s.ingredients,
+          sizes: s.sizes,
+          combos: s.combos,
+          promotions: s.promotions,
+          orders: s.orders,
+          employees: s.employees,
+          whatsapp: s.whatsapp,
+          config: s.config,
+          logs: s.logs,
+        };
+        return JSON.stringify(data, null, 2);
+      },
+
+      importData: (json) => {
+        try {
+          const data = JSON.parse(json);
+          if (!data || typeof data !== 'object') return false;
+          // Mergear con cuidado: solo sobreescribir si el dato es válido
+          const patch: Partial<AppState> = {};
+          if (Array.isArray(data.categories)) patch.categories = data.categories;
+          if (Array.isArray(data.products)) patch.products = data.products;
+          if (Array.isArray(data.ingredients)) patch.ingredients = data.ingredients;
+          if (Array.isArray(data.sizes)) patch.sizes = data.sizes;
+          if (Array.isArray(data.combos)) patch.combos = data.combos;
+          if (Array.isArray(data.promotions)) patch.promotions = data.promotions;
+          if (Array.isArray(data.orders)) patch.orders = data.orders;
+          if (Array.isArray(data.employees)) patch.employees = data.employees;
+          if (Array.isArray(data.whatsapp)) patch.whatsapp = data.whatsapp;
+          if (data.config && typeof data.config === 'object') patch.config = data.config;
+          if (Array.isArray(data.logs)) patch.logs = data.logs;
+          set({ ...patch });
+          return true;
+        } catch (e) {
+          return false;
+        }
+      },
+
       // ===== Reset =====
       resetAll: () => {
         set({ ...initialState, currentView: 'home' });
@@ -490,9 +538,11 @@ export const useStore = create<Store>()(
         appliedPromoCode: s.appliedPromoCode,
         orders: s.orders,
         employees: s.employees,
+        currentEmployee: s.currentEmployee,
         whatsapp: s.whatsapp,
         config: s.config,
         logs: s.logs,
+        currentView: s.currentView,
       }),
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted;
