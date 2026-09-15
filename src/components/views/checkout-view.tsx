@@ -1,0 +1,387 @@
+'use client';
+
+import { useState } from 'react';
+import { useStore, useShallow } from '@/lib/store';
+import { motion } from 'framer-motion';
+import { ChevronLeft, Check, CreditCard, Banknote, Clock, MapPin, User, Phone, AlertCircle } from 'lucide-react';
+import {
+  checkOrderTime, isAnyOrderSlotOpen, nextAvailableSlotLabel, formatCUP,
+} from '@/lib/los-compas';
+import type { PaymentMethod, TimeSlot, DeliveryMode } from '@/lib/types';
+import { toast } from 'sonner';
+
+export function CheckoutView() {
+  const cart = useStore((s) => s.cart);
+  const config = useStore((s) => s.config);
+  const totals = useStore(useShallow((s) => {
+    let subtotal = 0, extras = 0;
+    for (const item of s.cart) {
+      subtotal += item.unitPrice * item.qty;
+      extras += item.extrasTotal * item.qty;
+    }
+    const delivery = s.cart.length > 0 && s.cart.some((i) => !i.isCombo) ? null : 0;
+    const base = subtotal + extras;
+    const total = delivery === null ? base : base + delivery;
+    return { subtotal, extras, delivery, total };
+  }));
+  const setView = useStore((s) => s.setView);
+  const placeOrder = useStore((s) => s.placeOrder);
+
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [reference, setReference] = useState('');
+  const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('domicilio');
+
+  // Horario
+  const isMorningOpen = checkOrderTime('manana', config);
+  const isAfternoonOpen = checkOrderTime('tarde', config);
+  const nextSlot = nextAvailableSlotLabel(config);
+  const [timeSlot, setTimeSlot] = useState<TimeSlot>(nextSlot.slot);
+  const scheduledTime = timeSlot === 'manana' ? config.morningDelivery : config.afternoonDelivery;
+
+  const surcharge = paymentMethod === 'transferencia' ? totals.total * config.transferSurcharge : 0;
+  const totalFinal = totals.total + surcharge;
+
+  const errors: { [k: string]: string } = {};
+  if (!name.trim()) errors.name = 'Tu nombre es obligatorio';
+  if (!phone.trim()) errors.phone = 'Tu teléfono es obligatorio';
+  if (!/^[+\d][\d\s-]{6,}$/.test(phone.trim())) errors.phone = 'Teléfono inválido';
+  if (deliveryMode === 'domicilio' && !address.trim()) errors.address = 'Tu dirección es obligatoria';
+
+  const [touched, setTouched] = useState(false);
+
+  const handlePlace = () => {
+    setTouched(true);
+    if (Object.keys(errors).length > 0) {
+      toast.error('Revisa los campos del formulario');
+      return;
+    }
+    if (cart.length === 0) {
+      toast.error('Tu carrito está vacío');
+      setView('menu');
+      return;
+    }
+
+    const order = placeOrder({
+      customerName: name.trim(),
+      customerPhone: phone.trim(),
+      customerAddress: deliveryMode === 'domicilio' ? address.trim() : 'Recogida en tienda',
+      reference: reference.trim(),
+      paymentMethod,
+      timeSlot,
+      deliveryMode,
+      scheduledTime,
+      notes: notes.trim(),
+    });
+
+    toast.success(`Pedido ${order.code} creado`);
+    setView('tracking');
+  };
+
+  if (cart.length === 0) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 pb-24">
+        <span className="text-6xl mb-4">🛒</span>
+        <h2 className="font-cartoon text-lg mb-2">No tienes productos</h2>
+        <button
+          onClick={() => setView('menu')}
+          className="bg-primary text-primary-foreground px-5 py-3 rounded-full font-bold text-sm"
+        >
+          Ver Menú
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-screen-enter pb-32">
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center gap-2">
+          <button
+            onClick={() => setView('cart')}
+            className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <h1 className="font-cartoon text-base">Checkout</h1>
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
+        {/* Datos del cliente */}
+        <section>
+          <h2 className="font-cartoon text-sm mb-2 flex items-center gap-1.5">
+            <User size={16} className="text-primary" /> Tus datos
+          </h2>
+          <div className="space-y-2.5">
+            <Field label="Nombre completo *" error={touched && errors.name}>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ej: Carlos Pérez"
+                className="bg-card border border-border rounded-xl px-3 py-2.5 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </Field>
+            <Field label="Número de teléfono *" error={touched && errors.phone}>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                inputMode="tel"
+                placeholder="Ej: +53 5 1234567"
+                className="bg-card border border-border rounded-xl px-3 py-2.5 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </Field>
+          </div>
+        </section>
+
+        {/* Modo de entrega */}
+        <section>
+          <h2 className="font-cartoon text-sm mb-2 flex items-center gap-1.5">
+            <MapPin size={16} className="text-primary" /> Entrega
+          </h2>
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <button
+              onClick={() => setDeliveryMode('domicilio')}
+              className={`p-3 rounded-xl border-2 text-left transition ${
+                deliveryMode === 'domicilio'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-card'
+              }`}
+            >
+              <div className="text-sm font-bold">🛵 Domicilio</div>
+              <div className="text-[11px] text-muted-foreground">Llegamos a tu casa</div>
+            </button>
+            <button
+              onClick={() => setDeliveryMode('recogida')}
+              className={`p-3 rounded-xl border-2 text-left transition ${
+                deliveryMode === 'recogida'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-card'
+              }`}
+            >
+              <div className="text-sm font-bold">🏪 Recogida</div>
+              <div className="text-[11px] text-muted-foreground">Pasar a buscar</div>
+            </button>
+          </div>
+
+          {deliveryMode === 'domicilio' && (
+            <div className="space-y-2.5">
+              <Field label="Dirección de entrega *" error={touched && errors.address}>
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Ej: Calle Martí #45 e/ Maceo y Agramonte"
+                  className="bg-card border border-border rounded-xl px-3 py-2.5 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[60px]"
+                />
+              </Field>
+              <Field label="Referencia (opcional)">
+                <input
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="Ej: Casa de esquina roja, al lado del parque"
+                  className="bg-card border border-border rounded-xl px-3 py-2.5 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </Field>
+            </div>
+          )}
+        </section>
+
+        {/* Horario */}
+        <section>
+          <h2 className="font-cartoon text-sm mb-2 flex items-center gap-1.5">
+            <Clock size={16} className="text-primary" /> Horario de pedido
+          </h2>
+          <div className="space-y-2">
+            <button
+              onClick={() => setTimeSlot('manana')}
+              disabled={false}
+              className={`w-full p-3 rounded-xl border-2 text-left transition ${
+                timeSlot === 'manana'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold">🌅 Mañana</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Pedidos {config.morningStart}–{config.morningEnd} · Entrega {config.morningDelivery}
+                  </div>
+                </div>
+                <div className="text-[10px]">
+                  {isMorningOpen ? (
+                    <span className="bg-green-700/30 text-green-400 px-2 py-1 rounded-full font-bold">ABIERTO</span>
+                  ) : (
+                    <span className="bg-muted-foreground/20 text-muted-foreground px-2 py-1 rounded-full">Cerrado</span>
+                  )}
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => setTimeSlot('tarde')}
+              className={`w-full p-3 rounded-xl border-2 text-left transition ${
+                timeSlot === 'tarde'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold">🌙 Tarde-Noche</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Pedidos {config.afternoonStart}–{config.afternoonEnd} · Entrega {config.afternoonDelivery}
+                  </div>
+                </div>
+                <div className="text-[10px]">
+                  {isAfternoonOpen ? (
+                    <span className="bg-green-700/30 text-green-400 px-2 py-1 rounded-full font-bold">ABIERTO</span>
+                  ) : (
+                    <span className="bg-muted-foreground/20 text-muted-foreground px-2 py-1 rounded-full">Cerrado</span>
+                  )}
+                </div>
+              </div>
+            </button>
+
+            {!isAnyOrderSlotOpen(config) && (
+              <div className="flex items-start gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-[11px] text-yellow-300">
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <span>
+                  Actualmente estamos fuera del horario de pedidos. Tu pedido será programado para el próximo horario disponible ({nextSlot.slot === 'manana' ? 'mañana' : 'tarde-noche'}).
+                </span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Pago */}
+        <section>
+          <h2 className="font-cartoon text-sm mb-2 flex items-center gap-1.5">
+            <CreditCard size={16} className="text-primary" /> Método de pago
+          </h2>
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              onClick={() => setPaymentMethod('efectivo')}
+              className={`p-3 rounded-xl border-2 text-left transition flex items-center gap-3 ${
+                paymentMethod === 'efectivo'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-card'
+              }`}
+            >
+              <Banknote size={20} className={paymentMethod === 'efectivo' ? 'text-primary' : 'text-muted-foreground'} />
+              <div className="flex-1">
+                <div className="text-sm font-bold">💵 Efectivo</div>
+                <div className="text-[11px] text-muted-foreground">Pago al recibir el pedido</div>
+              </div>
+              {paymentMethod === 'efectivo' && <Check size={18} className="text-primary" />}
+            </button>
+            <button
+              onClick={() => setPaymentMethod('transferencia')}
+              className={`p-3 rounded-xl border-2 text-left transition flex items-center gap-3 ${
+                paymentMethod === 'transferencia'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-card'
+              }`}
+            >
+              <CreditCard size={20} className={paymentMethod === 'transferencia' ? 'text-primary' : 'text-muted-foreground'} />
+              <div className="flex-1">
+                <div className="text-sm font-bold">💳 Transferencia</div>
+                <div className="text-[11px] text-muted-foreground">
+                  +{Math.round(config.transferSurcharge * 100)}% de recargo
+                </div>
+              </div>
+              {paymentMethod === 'transferencia' && <Check size={18} className="text-primary" />}
+            </button>
+          </div>
+
+          {paymentMethod === 'transferencia' && (
+            <div className="mt-2 bg-primary/10 border border-primary/30 rounded-xl p-3 text-[11px] text-primary">
+              Las transferencias serán aceptadas con una suma del {Math.round(config.transferSurcharge * 100)}% adicional sobre el total del pedido.
+              Recargo: <strong>{formatCUP(surcharge)}</strong>
+            </div>
+          )}
+        </section>
+
+        {/* Notas */}
+        <section>
+          <h2 className="font-cartoon text-sm mb-2">Notas (opcional)</h2>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ej: Sin cebolla en la pizza, tocar timbre dos veces..."
+            className="bg-card border border-border rounded-xl px-3 py-2.5 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[60px]"
+          />
+        </section>
+
+        {/* Resumen */}
+        <section>
+          <div className="cartoon-border-primary bg-card rounded-2xl p-4">
+            <h3 className="font-cartoon text-sm mb-2">Resumen del pedido</h3>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Productos</span><span>{formatCUP(totals.subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Extras</span><span>{formatCUP(totals.extras)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Domicilio</span>
+                <span>
+                  {deliveryMode === 'recogida'
+                    ? formatCUP(0)
+                    : totals.delivery === null
+                      ? 'Pendiente'
+                      : formatCUP(totals.delivery)}
+                </span>
+              </div>
+              {surcharge > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Recargo transferencia</span>
+                  <span>{formatCUP(surcharge)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-cartoon text-base text-primary border-t border-border pt-2 mt-2">
+                <span>Total</span>
+                <span>{formatCUP(totalFinal)}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* CTA */}
+      <div className="fixed bottom-16 inset-x-0 z-30 bg-card/95 backdrop-blur-md border-t-2 border-primary/30 px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-[11px] text-muted-foreground">
+              {cart.length} producto(s) · {deliveryMode === 'domicilio' ? 'Domicilio' : 'Recogida'} · {paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+            </p>
+            <p className="font-cartoon text-base text-primary">{formatCUP(totalFinal)}</p>
+          </div>
+          <button
+            onClick={handlePlace}
+            className="bg-primary text-primary-foreground px-6 py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop"
+          >
+            Confirmar pedido
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-[11px] font-bold text-muted-foreground mb-1">{label}</label>
+      {children}
+      {error && (
+        <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
+          <AlertCircle size={11} /> {error}
+        </p>
+      )}
+    </div>
+  );
+}

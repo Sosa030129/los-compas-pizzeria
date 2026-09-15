@@ -1,0 +1,266 @@
+'use client';
+
+import { useStore, useShallow } from '@/lib/store';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Minus, Trash2, ShoppingBag, ChevronLeft, ArrowRight } from 'lucide-react';
+import { formatCUP, ingredientQtyLabel } from '@/lib/los-compas';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+export function CartView() {
+  const cart = useStore((s) => s.cart);
+  const ingredients = useStore((s) => s.ingredients);
+  const sizes = useStore((s) => s.sizes);
+  const updateCartItem = useStore((s) => s.updateCartItem);
+  const removeFromCart = useStore((s) => s.removeFromCart);
+  const clearCart = useStore((s) => s.clearCart);
+  const totals = useStore(useShallow((s) => {
+    let subtotal = 0, extras = 0;
+    for (const item of s.cart) {
+      subtotal += item.unitPrice * item.qty;
+      extras += item.extrasTotal * item.qty;
+    }
+    const delivery = s.cart.length > 0 && s.cart.some((i) => !i.isCombo) ? null : 0;
+    const base = subtotal + extras;
+    const total = delivery === null ? base : base + delivery;
+    return { subtotal, extras, delivery, total };
+  }));
+  const setView = useStore((s) => s.setView);
+  const config = useStore((s) => s.config);
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  if (cart.length === 0) {
+    return (
+      <div className="animate-screen-enter min-h-[60vh] flex flex-col items-center justify-center text-center px-4 pb-24">
+        <motion.div
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="text-7xl mb-4"
+        >
+          🛒
+        </motion.div>
+        <h2 className="font-cartoon text-xl mb-2">Tu carrito está vacío</h2>
+        <p className="text-sm text-muted-foreground max-w-xs mb-5">
+          Explora nuestro menú o arma tu pizza personalizada para comenzar tu pedido.
+        </p>
+        <button
+          onClick={() => setView('menu')}
+          className="bg-primary text-primary-foreground px-5 py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop"
+        >
+          Ver Menú
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-screen-enter pb-32">
+      {/* Header */}
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center gap-2">
+          <button
+            onClick={() => setView('menu')}
+            className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <h1 className="font-cartoon text-base flex-1">Carrito ({cart.length})</h1>
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="text-xs text-destructive font-bold hover:underline"
+          >
+            Vaciar
+          </button>
+        </div>
+      </div>
+
+      {/* Items */}
+      <div className="max-w-3xl mx-auto px-4 py-4 space-y-3">
+        {cart.map((item) => {
+          const size = item.size ? sizes.find((s) => s.id === item.size) : null;
+          const ings = (item.ingredients || [])
+            .map((ci) => {
+              const ing = ingredients.find((i) => i.id === ci.ingredientId);
+              if (!ing) return null;
+              return `${ing.name}${ci.qty !== 'normal' ? ` (${ingredientQtyLabel(ci.qty)})` : ''}`;
+            })
+            .filter(Boolean) as string[];
+
+          return (
+            <motion.div
+              key={item.id}
+              layout
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="cartoon-border bg-card rounded-2xl p-3"
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-3xl shrink-0">{item.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-cartoon text-sm leading-tight">{item.name}</h3>
+                    <button
+                      onClick={() => {
+                        removeFromCart(item.id);
+                        toast(`Eliminado: ${item.name}`);
+                      }}
+                      className="text-destructive hover:bg-destructive/10 w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  {size && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {size.label}{item.borderCheese ? ' · Borde queso' : ''}
+                    </p>
+                  )}
+                  {ings.length > 0 && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                      Extras: {ings.join(', ')}
+                    </p>
+                  )}
+                  {item.notes && !size && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{item.notes}</p>
+                  )}
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1 bg-secondary rounded-full p-0.5">
+                      <button
+                        onClick={() => {
+                          if (item.qty === 1) {
+                            removeFromCart(item.id);
+                          } else {
+                            updateCartItem(item.id, { qty: item.qty - 1 });
+                          }
+                        }}
+                        className="w-7 h-7 rounded-full bg-card flex items-center justify-center hover:bg-background"
+                        aria-label="Disminuir"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="text-sm font-bold min-w-6 text-center">{item.qty}</span>
+                      <button
+                        onClick={() => updateCartItem(item.id, { qty: item.qty + 1 })}
+                        className="w-7 h-7 rounded-full bg-card flex items-center justify-center hover:bg-background"
+                        aria-label="Aumentar"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <div className="text-right">
+                      {item.extrasTotal > 0 && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Base: {formatCUP(item.unitPrice * item.qty)} · Extras: {formatCUP(item.extrasTotal * item.qty)}
+                        </p>
+                      )}
+                      <p className="text-sm font-bold text-primary">
+                        {formatCUP((item.unitPrice + item.extrasTotal) * item.qty)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Resumen */}
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="cartoon-border-primary bg-card rounded-2xl p-4">
+          <h3 className="font-cartoon text-sm mb-2">Resumen</h3>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Productos</span>
+              <span>{formatCUP(totals.subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Extras</span>
+              <span>{formatCUP(totals.extras)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground border-t border-border pt-1.5">
+              <span>Domicilio</span>
+              <span>
+                {totals.delivery === null
+                  ? 'Pendiente de confirmar'
+                  : formatCUP(totals.delivery)}
+              </span>
+            </div>
+            {totals.delivery === null && (
+              <p className="text-[11px] text-muted-foreground">
+                💡 El costo final de domicilio será confirmado por el administrador.
+                Costo base sugerido: {formatCUP(config.deliveryBase)}
+              </p>
+            )}
+            <div className="flex justify-between font-cartoon text-base text-primary border-t border-border pt-2 mt-2">
+              <span>Total</span>
+              <span>{formatCUP(totals.total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="fixed bottom-16 inset-x-0 z-30 bg-card/95 backdrop-blur-md border-t-2 border-primary/30 px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-[11px] text-muted-foreground">Total provisional</p>
+            <p className="font-cartoon text-base text-primary">{formatCUP(totals.total)}</p>
+          </div>
+          <button
+            onClick={() => setView('checkout')}
+            className="bg-primary text-primary-foreground px-5 py-3 rounded-full font-bold text-sm flex items-center gap-2 hover:opacity-95 animate-button-pop"
+          >
+            Continuar <ArrowRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Confirmar vaciar */}
+      <AnimatePresence>
+        {showClearConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowClearConfirm(false)}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card rounded-2xl p-5 w-full max-w-sm border-2 border-border"
+            >
+              <h3 className="font-cartoon text-base mb-2">¿Vaciar carrito?</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Se eliminarán todos los productos que agregaste.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="flex-1 bg-secondary text-secondary-foreground py-2.5 rounded-full font-bold text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    clearCart();
+                    setShowClearConfirm(false);
+                    toast.success('Carrito vaciado');
+                  }}
+                  className="flex-1 bg-destructive text-destructive-foreground py-2.5 rounded-full font-bold text-sm"
+                >
+                  Vaciar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
