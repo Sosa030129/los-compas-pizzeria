@@ -1,0 +1,1499 @@
+     1→Perfecto. Voy a crear el PROMPT MAESTRO DEFINITIVO COMPLETO DE LOS COMPAS PIZZERÍA PWA incluyendo todo lo definido durante la conversación y el sistema profesional de construcción por fases con pruebas y corrección de errores.
+     2→Por su tamaño, lo dividiré en varias partes para que quede completo y no se pierda información.
+     3→🍕 PROMPT MAESTRO DEFINITIVO
+     4→LOS COMPAS PIZZERÍA PWA
+     5→Aplicación profesional de pedidos online para una pizzería real
+     6→1. ROL PRINCIPAL DE LA IA
+     7→Actúa como un equipo profesional multidisciplinario formado por:
+     8→• Arquitecto de software senior.
+     9→• Ingeniero frontend.
+    10→• Ingeniero backend.
+    11→• Diseñador UX/UI.
+    12→• Diseñador gráfico especializado en ilustraciones cartoon.
+    13→• Especialista en bases de datos.
+    14→• Especialista en aplicaciones PWA.
+    15→• Ingeniero DevOps.
+    16→• Especialista en seguridad.
+    17→• Ingeniero QA (control de calidad).
+    18→Tu misión es diseñar, construir, probar, corregir y preparar para producción una aplicación completa para una pizzería real llamada:
+    19→🍕 LOS COMPAS
+    20→No crear una simple página web.
+    21→Crear una plataforma profesional que pueda operar diariamente con clientes reales, empleados, cocina y repartidores.
+    22→2. OBJETIVO GENERAL DEL PROYECTO
+    23→Crear una aplicación PWA moderna que permita:
+    24→Clientes:
+    25→• Ver el menú.
+    26→• Crear pizzas personalizadas.
+    27→• Elegir ingredientes.
+    28→• Agregar comidas adicionales.
+    29→• Comprar postres y bebidas.
+    30→• Crear pedidos sin registrarse.
+    31→• Crear una cuenta opcional.
+    32→• Elegir horario.
+    33→• Recibir confirmación.
+    34→• Consultar estado del pedido.
+    35→Negocio:
+    36→Permitir al dueño:
+    37→• Administrar productos.
+    38→• Administrar ingredientes.
+    39→• Controlar precios.
+    40→• Gestionar empleados.
+    41→• Controlar pedidos.
+    42→• Administrar domicilios.
+    43→• Crear promociones.
+    44→• Recibir notificaciones.
+    45→• Operar la pizzería diariamente.
+    46→3. INFORMACIÓN DEL NEGOCIO
+    47→Nombre:
+    48→Los Compas
+    49→Ubicación:
+    50→Sancti Spíritus, Cuba.
+    51→Moneda:
+    52→CUP.
+    53→Modelo:
+    54→Pizzería con:
+    55→• Venta online.
+    56→• Delivery.
+    57→• Recogida de pedidos.
+    58→• Producción bajo pedido.
+    59→4. REQUISITOS TECNOLÓGICOS
+    60→Utilizar tecnologías gratuitas o con planes gratuitos.
+    61→Priorizar:
+    62→• Bajo costo de mantenimiento.
+    63→• Fácil administración.
+    64→• Buen funcionamiento en teléfonos Android.
+    65→• Código escalable.
+    66→La arquitectura puede utilizar cualquier tecnología adecuada, pero debe priorizar:
+    67→• Framework moderno frontend.
+    68→• Backend gratuito.
+    69→• Base de datos gratuita.
+    70→• Hosting gratuito.
+    71→• HTTPS incluido.
+    72→• PWA instalable.
+    73→5. ARQUITECTURA DEL PROYECTO
+    74→Crear una arquitectura profesional separando:
+    75→Cliente
+    76→Interfaz pública:
+    77→• Inicio.
+    78→• Menú.
+    79→• Constructor de pizzas.
+    80→• Carrito.
+    81→• Registro.
+    82→• Seguimiento.
+    83→Administración
+    84→Panel privado:
+    85→• Productos.
+    86→• Ingredientes.
+    87→• Combos.
+    88→• Pedidos.
+    89→• Empleados.
+    90→• Permisos.
+    91→• Configuración.
+    92→Cocina
+    93→Panel:
+    94→• Pedidos nuevos.
+    95→• Preparación.
+    96→• Cambios de estado.
+    97→Repartidores
+    98→Panel:
+    99→• Pedidos asignados.
+   100→• Dirección.
+   101→• Teléfono.
+   102→• Estado de entrega.
+   103→6. DISEÑO VISUAL
+   104→Crear una identidad visual propia.
+   105→Estilo:
+   106→Cartoon original.
+   107→Inspiración:
+   108→Transmitir sensación divertida, amigable y de videojuego de cocina.
+   109→IMPORTANTE:
+   110→No copiar:
+   111→• Personajes.
+   112→• Diseños.
+   113→• Interfaces.
+   114→• Elementos protegidos.
+   115→Todo debe crearse desde cero.
+   116→Colores principales:
+   117→Utilizar:
+   118→• Gris carbón.
+   119→• Marrón cálido.
+   120→• Rojo vino.
+   121→• Beige tostado.
+   122→Modo:
+   123→Obligatorio:
+   124→🌙 Modo oscuro solamente.
+   125→Animaciones:
+   126→Agregar:
+   127→• Animación al tocar botones.
+   128→• Aparición de ingredientes.
+   129→• Movimiento suave del carrito.
+   130→• Confirmación animada del pedido.
+   131→• Transiciones entre pantallas.
+   132→7. CREACIÓN DE IMÁGENES
+   133→Crear desde cero todas las imágenes del sistema.
+   134→Categorías:
+   135→🍕 Pizzas
+   136→• Pizza queso.
+   137→• Pizza borde queso.
+   138→• Pizzas pequeñas.
+   139→• Pizzas medianas.
+   140→• Pizzas grandes.
+   141→• Familiares rectangulares.
+   142→• Extra familiares rectangulares.
+   143→Ingredientes
+   144→Crear imágenes individuales:
+   145→• Queso.
+   146→• Jamón.
+   147→• Salchicha.
+   148→• Piña.
+   149→• Vegetales.
+   150→• Cebolla.
+   151→• Otros ingredientes.
+   152→Comidas
+   153→Crear:
+   154→🌮 Tacos.
+   155→🥟 Empanadas.
+   156→🍝 Espaguetis.
+   157→🍌 Tostones.
+   158→Postres
+   159→Crear:
+   160→🍩 Donas.
+   161→🍫 Berlinesas con Nutella.
+   162→🍩 Rosquitas.
+   163→🍦 Helados.
+   164→Bebidas
+   165→Crear:
+   166→• Batidos.
+   167→• Coladas.
+   168→• Malteadas.
+   169→• Limonadas.
+   170→• Smoothies.
+   171→• Jugos.
+   172→• Refrescos.
+   173→• Malta.
+   174→• Cerveza.
+   175→8. CONSTRUCTOR VISUAL DE PIZZAS
+   176→Crear una herramienta donde el cliente pueda armar su pizza.
+   177→Pizza inicial:
+   178→Debe contener:
+   179→• Masa.
+   180→• Salsa de tomate.
+   181→• Queso.
+   182→El cliente podrá:
+   183→• Añadir ingredientes.
+   184→• Quitar ingredientes.
+   185→• Cambiar cantidades.
+   186→Cada ingrediente debe:
+   187→• Tener imagen.
+   188→• Tener precio.
+   189→• Actualizar la pizza visualmente.
+   190→Distribución visual:
+   191→Los ingredientes deben:
+   192→• Cubrir gran parte de la superficie.
+   193→• Verse abundantes.
+   194→• No estar demasiado separados.
+   195→• Mantener apariencia realista dentro del estilo cartoon.
+   196→Cantidades:
+   197→Permitir:
+   198→• Normal.
+   199→• Doble.
+   200→• Triple.
+   201→9. TIPOS DE PIZZA
+   202→Crear:
+   203→Redondas:
+   204→20 cm.
+   205→25 cm.
+   206→30 cm.
+   207→Rectangulares Pequeñas y medianas:
+   208→30-20 cm.
+   209→35-40 cm
+   210→Rectangulares:
+   211→Familiares:
+   212→42x30 cm.
+   213→Extra familiares:
+   214→46x36 cm.
+   215→Permitir:
+   216→• Pizza normal.
+   217→• Borde de queso.
+   218→• Ingredientes adicionales.
+   219→10. CATÁLOGO DE PRODUCTOS
+   220→Crear categorías:
+   221→🍕 Pizzas
+   222→Usar el catálogo proporcionado por el negocio.
+   223→🌮 Comidas
+   224→• Tacos.de salchicha o de jamón 
+   225→• Empanadas de queso
+   226→• Espaguetis.
+   227→• Tostones normales, de ajo o rellenos
+   228→🍩 Postres
+   229→• Donas.
+   230→• Berlinesas.
+   231→• Rosquitas.
+   232→• Helados.
+   233→🥤 Bebidas
+   234→Todos los productos proporcionados.
+   235→(Continuará en la Parte 2 con:
+   236→• Sistema de pedidos.
+   237→• Precios.
+   238→• Domicilio.
+   239→• WhatsApp.
+   240→• Usuarios.
+   241→• Administración.
+   242→• Empleados.
+   243→• Base de datos.
+   244→• PWA.
+   245→• Pruebas y corrección de errores por fases.)
+   246→
+   247→PARTE 2 — SISTEMA DE PEDIDOS, CLIENTES, DOMICILIO, PAGOS Y EXPERIENCIA DE COMPRA
+   248→
+   249→11. SISTEMA COMPLETO DE PEDIDOS
+   250→Crear un sistema profesional de pedidos online.
+   251→El cliente debe poder:
+   252→• Explorar productos.
+   253→• Personalizar productos.
+   254→• Añadir productos al carrito.
+   255→• Modificar cantidades.
+   256→• Eliminar productos.
+   257→• Crear varios productos diferentes dentro del mismo pedido.
+   258→• Revisar el resumen antes de confirmar.
+   259→12. CARRITO DE COMPRA INTELIGENTE
+   260→El carrito debe mostrar:
+   261→Cada producto individualmente:
+   262→Ejemplo:
+   263→Pizza familiar queso 42x30 cm Cantidad: 1 Extras: Jamón +580 CUP Precio: 2780 CUP
+   264→Resumen final:
+   265→Mostrar siempre separado:
+   266→Productos: XXXX CUP Extras: XXXX CUP Domicilio: XXXX CUP TOTAL: XXXX CUP
+   267→Nunca mostrar solamente el total.
+   268→13. GESTIÓN DE MÚLTIPLES PRODUCTOS
+   269→El sistema debe permitir:
+   270→Ejemplo:
+   271→Un cliente puede pedir:
+   272→• 2 pizzas personalizadas.
+   273→• 1 taco.
+   274→• 2 empanadas.
+   275→• 1 espagueti.
+   276→• 3 bebidas.
+   277→• 1 postre.
+   278→Todo dentro de una misma orden.
+   279→14. AGRUPACIÓN DE PEDIDOS DEL MISMO CLIENTE
+   280→Crear un sistema inteligente para relacionar pedidos.
+   281→Si coinciden:
+   282→• Nombre.
+   283→• Teléfono.
+   284→• Dirección.
+   285→El sistema debe detectar que pertenecen al mismo cliente.
+   286→Permitir:
+   287→• Ver historial.
+   288→• Repetir pedidos.
+   289→• Asociar pedidos anteriores.
+   290→15. DATOS DEL CLIENTE
+   291→Crear formulario:
+   292→Campos:
+   293→• Nombre completo.
+   294→• Número de teléfono.
+   295→• Dirección de entrega.
+   296→Validaciones:
+   297→• Teléfono válido.
+   298→• Campos obligatorios.
+   299→• Dirección suficiente para entrega.
+   300→16. SISTEMA DE USUARIOS
+   301→Debe existir doble opción:
+   302→Comprar sin registro
+   303→El cliente puede:
+   304→• Hacer pedido rápido.
+   305→• Introducir sus datos.
+   306→• Confirmar compra.
+   307→Crear cuenta
+   308→Opcionalmente puede registrarse.
+   309→Guardar:
+   310→• Nombre.
+   311→• Teléfono.
+   312→• Direcciones frecuentes.
+   313→• Historial de pedidos.
+   314→• Productos favoritos.
+   315→• Pedidos repetidos.
+   316→17. SISTEMA DE HORARIOS DE PEDIDOS
+   317→Crear selector de horario.
+   318→El cliente debe elegir cuándo desea recibir su pedido.
+   319→Horario de mañana
+   320→Recepción de pedidos:
+   321→08:00 AM hasta 10:30 AM
+   322→Salida aproximada:
+   323→12:30 PM hasta 01:00 PM
+   324→Horario tarde-noche
+   325→Recepción de pedidos:
+   326→01:00 PM hasta 04:30 PM
+   327→Salida aproximada:
+   328→06:30 PM hasta 07:00 PM
+   329→18. CONTROL AUTOMÁTICO DE HORARIOS
+   330→Si un cliente intenta realizar un pedido fuera del horario:
+   331→Mostrar mensaje:
+   332→Actualmente estamos fuera del horario de pedidos. Tu pedido será programado para el próximo horario disponible.
+   333→Permitir:
+   334→• Cambiar horario.
+   335→• Continuar pedido.
+   336→19. SISTEMA DE DOMICILIO
+   337→Crear sistema flexible.
+   338→Costo inicial:
+   339→250 CUP
+   340→Pero el cálculo final será manual por administrador.
+   341→Flujo:
+   342→Cliente:
+   343→Realiza pedido.
+   344→Sistema muestra:
+   345→Productos: 3500 CUP Domicilio: Pendiente de confirmar Total provisional: 3500 CUP
+   346→Administrador:
+   347→Modifica:
+   348→Domicilio: 400 CUP
+   349→Sistema actualiza:
+   350→Productos: 3500 CUP Domicilio: 400 CUP TOTAL: 3900 CUP
+   351→20. MÉTODOS DE PAGO
+   352→Permitir:
+   353→Efectivo
+   354→Pedido confirmado.
+   355→Transferencia
+   356→Cuando seleccione transferencia mostrar:
+   357→Las transferencias serán aceptadas con una suma del 30% adicional sobre el total del pedido.
+   358→No implementar pagos online obligatorios.
+   359→El pago se realizará según la operación real del negocio.
+   360→21. NOTIFICACIONES POR WHATSAPP
+   361→Crear integración configurable.
+   362→El administrador podrá añadir:
+   363→Uno o varios números.
+   364→Ejemplo:
+   365→Número: +53 XXXXXXXX Función: ☑ Pedidos ☑ Cocina ☑ Reparto
+   366→22. EVENTOS QUE DEBEN ENVIAR NOTIFICACIÓN
+   367→Enviar aviso cuando ocurra:
+   368→Nuevo pedido
+   369→Mensaje:
+   370→Nuevo pedido recibido. Cliente: Nombre Total: XXXX CUP
+   371→Pedido confirmado
+   372→Enviar:
+   373→Tu pedido ha sido confirmado. Costo domicilio: XXX CUP Total: XXX CUP
+   374→Pedido listo
+   375→Enviar:
+   376→Tu pedido está listo.
+   377→Pedido entregado
+   378→Enviar:
+   379→Pedido entregado correctamente. Gracias por comprar en Los Compas.
+   380→23. SEGUIMIENTO DEL PEDIDO
+   381→Crear estados:
+   382→Estado 1
+   383→Pedido recibido
+   384→Estado 2
+   385→Pedido confirmado
+   386→Estado 3
+   387→Preparando
+   388→Estado 4
+   389→Listo para entrega
+   390→Estado 5
+   391→En camino
+   392→Estado 6
+   393→Entregado
+   394→24. EXPERIENCIA DEL CLIENTE
+   395→La aplicación debe sentirse:
+   396→• Rápida.
+   397→• Divertida.
+   398→• Simple.
+   399→• Profesional.
+   400→Optimizar para:
+   401→• Teléfonos Android económicos.
+   402→• Conexiones lentas.
+   403→• Bajo consumo de datos.
+   404→25. ACCESIBILIDAD
+   405→Implementar:
+   406→• Textos claros.
+   407→• Botones grandes.
+   408→• Buena lectura en pantalla pequeña.
+   409→• Navegación sencilla.
+   410→26. VALIDACIONES ANTES DE CONFIRMAR PEDIDO
+   411→Antes de enviar:
+   412→Comprobar:
+   413→✅ Tiene productos.
+   414→✅ Tiene nombre.
+   415→✅ Tiene teléfono.
+   416→✅ Tiene dirección.
+   417→✅ Tiene horario seleccionado.
+   418→✅ Tiene método de pago seleccionado.
+   419→Si falta algo:
+   420→Mostrar aviso claro.
+   421→27. EXPERIENCIA PWA
+   422→La aplicación debe:
+   423→• Instalarse como aplicación.
+   424→• Tener icono propio.
+   425→• Funcionar en pantalla completa.
+   426→• Mantener modo oscuro.
+   427→• Cargar rápido.
+   428→28. REGLA GENERAL DE DESARROLLO
+   429→Todo sistema creado debe ser:
+   430→• Modular.
+   431→• Editable.
+   432→• Escalable.
+   433→• Fácil de mantener.
+   434→• Preparado para crecimiento futuro.
+   435→Fin de la Parte 2
+   436→En la Parte 3 incluiré:
+   437→• Panel administrativo completo.
+   438→• Gestión de empleados.
+   439→• Cocina.
+   440→• Repartidores.
+   441→• Permisos personalizados.
+   442→• Gestión de productos.
+   443→• Ingredientes.
+   444→• Combos.
+   445→• Promociones.
+   446→• Configuración del negocio.
+   447→
+   448→PARTE 3 — PANEL ADMINISTRATIVO, EMPLEADOS, COCINA, REPARTIDORES Y GESTIÓN DEL NEGOCIO
+   449→
+   450→29. PANEL ADMINISTRATIVO GENERAL
+   451→Crear un panel privado de administración para el dueño del negocio.
+   452→El administrador debe tener control completo sobre la aplicación.
+   453→Debe incluir:
+   454→• Dashboard principal.
+   455→• Gestión de pedidos.
+   456→• Gestión de productos.
+   457→• Gestión de ingredientes.
+   458→• Gestión de categorías.
+   459→• Gestión de empleados.
+   460→• Gestión de permisos.
+   461→• Gestión de combos.
+   462→• Gestión de promociones.
+   463→• Configuración del negocio.
+   464→• Configuración de WhatsApp.
+   465→• Configuración de domicilio.
+   466→• Reportes básicos.
+   467→30. DASHBOARD ADMINISTRATIVO
+   468→Crear una pantalla principal con información importante:
+   469→Mostrar:
+   470→Pedidos actuales:
+   471→• Nuevos.
+   472→• En preparación.
+   473→• Listos.
+   474→• En reparto.
+   475→• Entregados.
+   476→Resumen del día:
+   477→Mostrar:
+   478→• Cantidad de pedidos.
+   479→• Ventas totales.
+   480→• Productos más vendidos.
+   481→• Pedidos pendientes.
+   482→• Pedidos cancelados.
+   483→Alertas:
+   484→Mostrar:
+   485→• Productos agotados.
+   486→• Ingredientes con problemas.
+   487→• Pedidos atrasados.
+   488→• Errores del sistema.
+   489→31. GESTIÓN DE PRODUCTOS
+   490→El administrador debe poder controlar completamente el menú.
+   491→Funciones:
+   492→Crear producto:
+   493→Campos:
+   494→• Nombre.
+   495→• Categoría.
+   496→• Imagen.
+   497→• Descripción.
+   498→• Precio.
+   499→• Disponibilidad.
+   500→• Tiempo aproximado de preparación.
+   501→Editar producto:
+   502→Permitir cambiar:
+   503→• Nombre.
+   504→• Precio.
+   505→• Imagen.
+   506→• Descripción.
+   507→• Categoría.
+   508→Eliminar producto.
+   509→Activar/desactivar producto.
+   510→Cuando esté desactivado:
+   511→Mostrar:
+   512→Producto agotado
+   513→Y bloquear la selección del cliente.
+   514→32. GESTIÓN DE CATEGORÍAS
+   515→Crear categorías editables:
+   516→Ejemplo:
+   517→🍕 Pizzas
+   518→🌮 Comidas
+   519→🍝 Pastas
+   520→🍩 Postres
+   521→🥤 Bebidas
+   522→🍌 Tostones
+   523→El administrador puede:
+   524→• Crear categorías.
+   525→• Cambiar nombre.
+   526→• Cambiar imagen.
+   527→• Ocultar categorías temporalmente.
+   528→33. SISTEMA DE INGREDIENTES ADMINISTRABLE
+   529→Crear un módulo independiente.
+   530→El administrador podrá:
+   531→Agregar ingredientes:
+   532→Ejemplo:
+   533→• Queso.
+   534→• Jamón.
+   535→• Salchicha.
+   536→• Piña.
+   537→• Vegetales.
+   538→• Cebolla.
+   539→Cada ingrediente tendrá:
+   540→• Imagen.
+   541→• Nombre.
+   542→• Precio.
+   543→• Categoría.
+   544→• Estado disponible/agregado.
+   545→Funciones:
+   546→✅ Crear ingrediente.
+   547→✅ Editar precio.
+   548→✅ Cambiar imagen.
+   549→✅ Activar/desactivar.
+   550→✅ Eliminar.
+   551→34. CONFIGURACIÓN DE INGREDIENTES POR TAMAÑO
+   552→Permitir diferentes precios según la pizza.
+   553→Ejemplo:
+   554→Pizza pequeña:
+   555→Queso:
+   556→250 CUP
+   557→Pizza familiar:
+   558→Queso:
+   559→700 CUP
+   560→El sistema debe permitir:
+   561→Configurar precios individuales por tamaño.
+   562→35. GESTIÓN DE CANTIDADES DE INGREDIENTES
+   563→El cliente podrá seleccionar:
+   564→Normal:
+   565→1 porción.
+   566→Doble:
+   567→2 porciones.
+   568→Triple:
+   569→3 porciones.
+   570→El sistema debe:
+   571→• Multiplicar precio.
+   572→• Actualizar imagen.
+   573→• Actualizar total automáticamente.
+   574→36. GESTIÓN DE COMBOS
+   575→Permitir crear combos.
+   576→Usuarios autorizados:
+   577→• Administrador.
+   578→• Cocina con permiso.
+   579→Un combo puede contener:
+   580→Ejemplo:
+   581→Combo Familiar Pizza familiar + 2 bebidas + Postre Precio especial
+   582→Funciones:
+   583→• Crear combo.
+   584→• Cambiar precio.
+   585→• Activar/desactivar.
+   586→• Añadir productos.
+   587→• Cambiar imagen.
+   588→37. PROMOCIONES Y OFERTAS
+   589→Crear módulo de promociones.
+   590→Permitir:
+   591→• Descuentos.
+   592→• Productos gratis.
+   593→• Ofertas por cantidad.
+   594→• Promociones temporales.
+   595→Ejemplo:
+   596→Compra 2 pizzas grandes Obtén una bebida gratis
+   597→Configurar:
+   598→• Fecha inicial.
+   599→• Fecha final.
+   600→• Productos incluidos.
+   601→• Descuento aplicado.
+   602→38. GESTIÓN DE PEDIDOS ADMINISTRATIVA
+   603→El administrador debe poder:
+   604→Ver todos los pedidos.
+   605→Información:
+   606→• Número de pedido.
+   607→• Cliente.
+   608→• Teléfono.
+   609→• Dirección.
+   610→• Productos.
+   611→• Ingredientes.
+   612→• Horario.
+   613→• Método de pago.
+   614→• Estado.
+   615→• Costo domicilio.
+   616→• Total.
+   617→Acciones:
+   618→• Confirmar.
+   619→• Modificar domicilio.
+   620→• Cambiar estado.
+   621→• Cancelar.
+   622→• Asignar repartidor.
+   623→39. PANEL DE COCINA
+   624→Crear una interfaz específica para cocina.
+   625→Objetivo:
+   626→Que los trabajadores puedan preparar pedidos rápidamente.
+   627→Mostrar:
+   628→Pedidos pendientes.
+   629→Cada pedido:
+   630→Cliente: XXXX Pizza: Familiar 42x30 Ingredientes: Extra queso Jamón doble Hora: 12:30 PM
+   631→Funciones cocina:
+   632→Puede:
+   633→• Ver pedidos.
+   634→• Aceptar preparación.
+   635→• Cambiar estado.
+   636→• Marcar listo.
+   637→Puede crear combos solamente si tiene permiso.
+   638→40. PANEL DE REPARTIDORES
+   639→Crear módulo independiente.
+   640→El repartidor podrá ver:
+   641→• Pedidos asignados.
+   642→• Nombre cliente.
+   643→• Teléfono.
+   644→• Dirección.
+   645→• Total.
+   646→• Método de pago.
+   647→Estados:
+   648→Cambiar:
+   649→Preparado ↓ Recogido ↓ En camino ↓ Entregado
+   650→No debe poder modificar:
+   651→• Precios.
+   652→• Productos.
+   653→• Usuarios.
+   654→• Configuración.
+   655→41. SISTEMA DE EMPLEADOS
+   656→Crear módulo para administrar trabajadores.
+   657→El administrador podrá:
+   658→Agregar empleados.
+   659→Datos:
+   660→• Nombre.
+   661→• Teléfono.
+   662→• Usuario.
+   663→• Contraseña.
+   664→• Rol.
+   665→Roles iniciales:
+   666→Administrador
+   667→Acceso total.
+   668→Cocina
+   669→Acceso limitado.
+   670→Repartidor
+   671→Acceso limitado.
+   672→42. SISTEMA DE PERMISOS PERSONALIZADOS
+   673→Crear permisos avanzados.
+   674→El administrador podrá crear empleados personalizados.
+   675→Ejemplo:
+   676→Empleado:
+   677→"Encargado tarde"
+   678→Permisos:
+   679→☑ Ver pedidos
+   680→☑ Crear combos
+   681→☑ Cambiar estados
+   682→❌ No puede cambiar precios.
+   683→Cada permiso debe poder activarse o desactivarse manualmente.
+   684→43. CONFIGURACIÓN DEL NEGOCIO
+   685→Crear sección:
+   686→"Configuración General"
+   687→Permitir modificar:
+   688→• Nombre del negocio.
+   689→• Logo.
+   690→• Número WhatsApp.
+   691→• Horarios.
+   692→• Moneda.
+   693→• Dirección.
+   694→• Mensajes automáticos.
+   695→• Costos de domicilio.
+   696→44. CONFIGURACIÓN DE DOMICILIO
+   697→Administrador puede:
+   698→Cambiar costo base:
+   699→Actual:
+   700→250 CUP.
+   701→Puede modificar:
+   702→• Precio base.
+   703→• Precio manual por pedido.
+   704→• Notas para repartidor.
+   705→45. CONFIGURACIÓN WHATSAPP
+   706→Panel:
+   707→"Administrar WhatsApp"
+   708→Permitir:
+   709→Agregar varios números.
+   710→Cada uno:
+   711→• Número.
+   712→• Nombre.
+   713→• Función.
+   714→• Estado activo.
+   715→Ejemplo:
+   716→WhatsApp Principal Función: Pedidos Activo: Sí
+   717→46. REGISTRO DE ACTIVIDAD
+   718→Crear historial administrativo.
+   719→Guardar:
+   720→• Quién hizo cambios.
+   721→• Qué cambió.
+   722→• Fecha.
+   723→• Hora.
+   724→Ejemplo:
+   725→Usuario: Administrador Cambio: Precio pizza familiar Antes: 2200 CUP Después: 2300 CUP
+   726→47. SEGURIDAD DEL PANEL ADMINISTRATIVO
+   727→Implementar:
+   728→• Inicio de sesión seguro.
+   729→• Control de permisos.
+   730→• Protección de rutas.
+   731→• Validación de datos.
+   732→• Protección contra accesos no autorizados.
+   733→48. OBJETIVO DEL PANEL
+   734→El sistema administrativo debe permitir que el dueño pueda manejar completamente la pizzería sin necesidad de modificar código.
+   735→Todo debe poder configurarse desde la interfaz.
+   736→Fin de la Parte 3
+   737→En la Parte 4 se incluirá:
+   738→• Base de datos completa.
+   739→• Arquitectura técnica.
+   740→• Estructura de carpetas.
+   741→• PWA.
+   742→• Seguridad.
+   743→• Hosting gratuito.
+   744→• Despliegue.
+   745→• Preparación para producción.
+   746→
+   747→PARTE 4 — ARQUITECTURA TÉCNICA, BASE DE DATOS, PWA, SEGURIDAD Y DESPLIEGUE
+   748→
+   749→49. ARQUITECTURA GENERAL DEL SISTEMA
+   750→Crear una arquitectura profesional, escalable y preparada para operar una pizzería real.
+   751→La estructura debe separar claramente:
+   752→LOS COMPAS PWA ├── Aplicación Cliente │ ├── Panel Administración │ ├── Panel Cocina │ ├── Panel Repartidor │ ├── Backend │ ├── Base de Datos │ ├── Almacenamiento de imágenes │ └── Sistema PWA
+   753→50. PRINCIPIOS DE DESARROLLO
+   754→El proyecto debe cumplir:
+   755→• Código organizado.
+   756→• Fácil mantenimiento.
+   757→• Escalable.
+   758→• Seguro.
+   759→• Optimizado para móviles.
+   760→• Bajo costo.
+   761→• Uso de servicios gratuitos cuando sea posible.
+   762→No crear código improvisado.
+   763→Todo módulo debe estar preparado para futuras mejoras.
+   764→51. TECNOLOGÍAS
+   765→Seleccionar tecnologías modernas con planes gratuitos.
+   766→Priorizar:
+   767→Frontend
+   768→Debe ser:
+   769→• Rápido.
+   770→• Responsive.
+   771→• Compatible con Android.
+   772→• Preparado para PWA.
+   773→Backend
+   774→Debe manejar:
+   775→• Usuarios.
+   776→• Pedidos.
+   777→• Productos.
+   778→• Permisos.
+   779→• Notificaciones.
+   780→• Configuraciones.
+   781→Base de datos
+   782→Debe permitir:
+   783→• Crecimiento del negocio.
+   784→• Muchos pedidos.
+   785→• Múltiples empleados.
+   786→• Historial completo.
+   787→Almacenamiento
+   788→Debe soportar:
+   789→• Imágenes de productos.
+   790→• Ingredientes.
+   791→• Logo.
+   792→• Recursos cartoon.
+   793→52. ESTRUCTURA DE BASE DE DATOS
+   794→Crear una base de datos profesional.
+   795→Tabla: Usuarios
+   796→Campos:
+   797→id nombre telefono correo(opcional) contraseña fecha_creacion ultimo_acceso estado
+   798→Tabla: Direcciones
+   799→Campos:
+   800→id usuario_id direccion referencia telefono_contacto principal
+   801→Tabla: Productos
+   802→Campos:
+   803→id nombre descripcion categoria imagen precio estado agotado fecha_creacion
+   804→Tabla: Categorías
+   805→Campos:
+   806→id nombre imagen estado orden_visual
+   807→Tabla: Ingredientes
+   808→Campos:
+   809→id nombre imagen precio_pequeña precio_familiar estado
+   810→Tabla: Pizzas Personalizadas
+   811→Campos:
+   812→id pedido_id tamaño tipo_borde ingredientes cantidad precio_total
+   813→Tabla: Pedidos
+   814→Campos:
+   815→id usuario_id nombre_cliente telefono direccion horario metodo_pago estado subtotal domicilio total fecha
+   816→Tabla: Detalles del pedido
+   817→Campos:
+   818→id pedido_id producto cantidad precio extras
+   819→Tabla: Combos
+   820→Campos:
+   821→id nombre descripcion imagen precio productos_incluidos estado
+   822→Tabla: Empleados
+   823→Campos:
+   824→id nombre telefono usuario contraseña rol estado
+   825→Tabla: Roles
+   826→Campos:
+   827→id nombre permisos
+   828→Tabla: Permisos
+   829→Campos:
+   830→id nombre descripcion
+   831→Tabla: WhatsApp
+   832→Campos:
+   833→id numero funcion activo
+   834→Tabla: Configuración
+   835→Campos:
+   836→id nombre_negocio logo horarios domicilio_base moneda mensajes
+   837→Tabla: Historial de cambios
+   838→Campos:
+   839→id usuario accion fecha descripcion
+   840→53. SISTEMA DE AUTENTICACIÓN
+   841→Crear sistema seguro.
+   842→Debe permitir:
+   843→Clientes
+   844→• Comprar sin cuenta.
+   845→• Crear cuenta opcional.
+   846→Empleados
+   847→Acceso mediante:
+   848→• Usuario.
+   849→• Contraseña.
+   850→Implementar:
+   851→• Sesiones seguras.
+   852→• Protección de rutas.
+   853→• Cierre de sesión.
+   854→• Control de permisos.
+   855→54. SISTEMA PWA
+   856→La aplicación debe convertirse en una aplicación instalable.
+   857→Debe incluir:
+   858→Manifest
+   859→Configurar:
+   860→• Nombre.
+   861→• Icono.
+   862→• Colores.
+   863→• Pantalla inicial.
+   864→• Modo aplicación.
+   865→Service Worker
+   866→Permitir:
+   867→• Carga rápida.
+   868→• Caché de recursos.
+   869→• Mejor experiencia con internet lento.
+   870→Instalación
+   871→Debe permitir:
+   872→"Agregar Los Compas a pantalla de inicio".
+   873→55. DISEÑO RESPONSIVE
+   874→Debe funcionar correctamente en:
+   875→• Teléfonos Android.
+   876→• Tablets.
+   877→• Computadoras.
+   878→Prioridad:
+   879→📱 Teléfonos móviles.
+   880→56. OPTIMIZACIÓN PARA CUBA Y CONEXIONES LENTAS
+   881→Optimizar:
+   882→• Tamaño de imágenes.
+   883→• Carga progresiva.
+   884→• Menor consumo de datos.
+   885→• Caché local.
+   886→• Interfaces ligeras.
+   887→57. SISTEMA DE IMÁGENES
+   888→Crear una biblioteca visual organizada.
+   889→Estructura:
+   890→assets/ ├── pizzas/ │ ├── ingredientes/ │ ├── comidas/ │ ├── postres/ │ ├── bebidas/ │ └── logo/
+   891→Todas las imágenes deben:
+   892→• Ser originales.
+   893→• Estilo cartoon.
+   894→• Tener fondo compatible con diseño oscuro.
+   895→• Mantener coherencia visual.
+   896→58. SEGURIDAD DEL SISTEMA
+   897→Implementar:
+   898→Protección de usuarios
+   899→• Datos privados protegidos.
+   900→• Contraseñas seguras.
+   901→• Sesiones protegidas.
+   902→Protección administrativa
+   903→Evitar:
+   904→• Acceso sin permiso.
+   905→• Cambios no autorizados.
+   906→• Manipulación de precios.
+   907→Protección de pedidos
+   908→Validar:
+   909→• Precios.
+   910→• Cantidades.
+   911→• Productos disponibles.
+   912→59. SISTEMA DE COPIAS DE SEGURIDAD
+   913→Preparar:
+   914→• Copia de base de datos.
+   915→• Recuperación de información.
+   916→• Exportación de datos.
+   917→60. DESPLIEGUE GRATUITO
+   918→Preparar la aplicación para utilizar:
+   919→• Hosting gratuito.
+   920→• Base de datos gratuita.
+   921→• HTTPS gratuito.
+   922→El proyecto debe incluir una guía:
+   923→Paso 1
+   924→Crear cuentas necesarias.
+   925→Paso 2
+   926→Configurar variables del proyecto.
+   927→Paso 3
+   928→Subir aplicación.
+   929→Paso 4
+   930→Configurar base de datos.
+   931→Paso 5
+   932→Crear administrador.
+   933→Paso 6
+   934→Probar sistema completo.
+   935→61. CONFIGURACIÓN DEL DOMINIO
+   936→Preparar:
+   937→Primera etapa:
+   938→• Subdominio gratuito.
+   939→Segunda etapa:
+   940→• Posibilidad de conectar dominio propio.
+   941→62. DOCUMENTACIÓN DEL PROYECTO
+   942→Crear documentos:
+   943→Manual administrador
+   944→Explicar:
+   945→• Crear productos.
+   946→• Cambiar precios.
+   947→• Gestionar pedidos.
+   948→• Crear empleados.
+   949→Manual empleados
+   950→Explicar:
+   951→• Cocina.
+   952→• Reparto.
+   953→• Estados.
+   954→Manual técnico
+   955→Explicar:
+   956→• Arquitectura.
+   957→• Instalación.
+   958→• Actualizaciones.
+   959→63. PREPARACIÓN PARA PRODUCCIÓN
+   960→Antes de publicar:
+   961→Comprobar:
+   962→✅ Aplicación funcionando.
+   963→✅ Pedidos correctos.
+   964→✅ Cálculos correctos.
+   965→✅ Usuarios funcionando.
+   966→✅ WhatsApp funcionando.
+   967→✅ Administración funcionando.
+   968→✅ PWA instalable.
+   969→✅ Seguridad revisada.
+   970→Fin de la Parte 4
+   971→En la Parte 5 estará la parte más importante para garantizar calidad:
+   972→• Construcción por fases.
+   973→• Metodología de desarrollo.
+   974→• Pruebas obligatorias.
+   975→• Corrección de errores.
+   976→• Auditoría después de cada fase.
+   977→• Control de versiones.
+   978→• Validación final antes de publicar.
+   979→
+   980→PARTE 5 — METODOLOGÍA DE CONSTRUCCIÓN, FASES DE DESARROLLO, PRUEBAS, CORRECCIÓN DE ERRORES Y CONTROL DE CALIDAD
+   981→
+   982→64. METODOLOGÍA GENERAL DE DESARROLLO
+   983→El proyecto debe construirse mediante fases ordenadas.
+   984→No avanzar a una siguiente fase sin:
+   985→• Terminar la fase actual.
+   986→• Revisar completamente el trabajo realizado.
+   987→• Ejecutar pruebas.
+   988→• Detectar errores.
+   989→• Corregir errores.
+   990→• Confirmar estabilidad.
+   991→El desarrollo debe seguir este ciclo:
+   992→PLANIFICACIÓN ↓ CONSTRUCCIÓN ↓ REVISIÓN ↓ PRUEBAS ↓ CORRECCIÓN DE ERRORES ↓ OPTIMIZACIÓN ↓ APROBACIÓN ↓ SIGUIENTE FASE
+   993→65. REGLA PRINCIPAL DE CALIDAD
+   994→La aplicación no debe considerarse terminada solamente porque el código exista.
+   995→Cada módulo debe estar:
+   996→✅ Construido.
+   997→✅ Probado.
+   998→✅ Revisado.
+   999→✅ Optimizado.
+  1000→✅ Validado para uso real.
+  1001→66. FASE 0 — ANÁLISIS Y PLANIFICACIÓN DEL PROYECTO
+  1002→Antes de escribir código:
+  1003→Crear:
+  1004→• Documento de requisitos.
+  1005→• Arquitectura general.
+  1006→• Flujo de usuarios.
+  1007→• Diseño de base de datos.
+  1008→• Organización del proyecto.
+  1009→• Plan de desarrollo.
+  1010→Revisiones obligatorias:
+  1011→Comprobar:
+  1012→• Que todos los requisitos estén incluidos.
+  1013→• Que la arquitectura soporte crecimiento.
+  1014→• Que no existan funciones incompatibles.
+  1015→• Que los costos sean mínimos.
+  1016→Pruebas:
+  1017→Validar:
+  1018→• Flujo del cliente.
+  1019→• Flujo administrador.
+  1020→• Flujo cocina.
+  1021→• Flujo repartidor.
+  1022→67. FASE 1 — DISEÑO VISUAL Y EXPERIENCIA DE USUARIO
+  1023→Construir:
+  1024→• Identidad visual.
+  1025→• Colores.
+  1026→• Modo oscuro.
+  1027→• Diseño de pantallas.
+  1028→• Componentes.
+  1029→• Animaciones.
+  1030→Crear:
+  1031→• Logo integrado.
+  1032→• Imágenes cartoon.
+  1033→• Diseño del menú.
+  1034→• Constructor de pizza.
+  1035→Revisión de fase:
+  1036→Comprobar:
+  1037→• Diseño atractivo.
+  1038→• Buena lectura.
+  1039→• Funcionamiento en móviles.
+  1040→• Coherencia visual.
+  1041→Pruebas:
+  1042→Realizar pruebas en:
+  1043→• Teléfono Android.
+  1044→• Tablet.
+  1045→• Computadora.
+  1046→Errores a buscar:
+  1047→• Elementos fuera de pantalla.
+  1048→• Botones pequeños.
+  1049→• Carga lenta.
+  1050→• Imágenes deformadas.
+  1051→68. FASE 2 — CONSTRUCCIÓN DEL FRONTEND
+  1052→Crear:
+  1053→• Página principal.
+  1054→• Menú.
+  1055→• Carrito.
+  1056→• Perfil cliente.
+  1057→• Constructor de pizzas.
+  1058→• Paneles internos.
+  1059→Revisar:
+  1060→• Navegación.
+  1061→• Botones.
+  1062→• Formularios.
+  1063→• Animaciones.
+  1064→Pruebas:
+  1065→Cliente debe poder:
+  1066→• Entrar.
+  1067→• Ver productos.
+  1068→• Crear pizza.
+  1069→• Añadir carrito.
+  1070→• Modificar pedido.
+  1071→Corregir:
+  1072→• Errores visuales.
+  1073→• Errores de cálculo.
+  1074→• Problemas de navegación.
+  1075→69. FASE 3 — SISTEMA DE PRODUCTOS E INGREDIENTES
+  1076→Construir:
+  1077→• Catálogo.
+  1078→• Categorías.
+  1079→• Ingredientes.
+  1080→• Precios.
+  1081→• Productos agotados.
+  1082→Pruebas:
+  1083→Administrador debe poder:
+  1084→• Crear producto.
+  1085→• Editar producto.
+  1086→• Cambiar precio.
+  1087→• Activar/desactivar.
+  1088→Cliente debe ver:
+  1089→• Productos disponibles.
+  1090→• Productos agotados bloqueados.
+  1091→Errores a revisar:
+  1092→• Precios incorrectos.
+  1093→• Productos duplicados.
+  1094→• Ingredientes sin imagen.
+  1095→• Cálculos incorrectos.
+  1096→70. FASE 4 — CONSTRUCTOR VISUAL DE PIZZAS
+  1097→Construir:
+  1098→• Pizza base.
+  1099→• Capas de ingredientes.
+  1100→• Sistema de cantidades.
+  1101→• Cálculo automático.
+  1102→Pruebas:
+  1103→Cliente:
+  1104→Crear pizza:
+  1105→• Añadir queso.
+  1106→• Añadir jamón.
+  1107→• Quitar ingrediente.
+  1108→• Cambiar cantidad.
+  1109→Verificar:
+  1110→• Imagen actualizada.
+  1111→• Precio actualizado.
+  1112→• Pedido correcto.
+  1113→Errores críticos:
+  1114→• Ingredientes desaparecen.
+  1115→• Precio incorrecto.
+  1116→• Imagen desordenada.
+  1117→No continuar hasta solucionarlo.
+  1118→71. FASE 5 — SISTEMA DE PEDIDOS Y CARRITO
+  1119→Construir:
+  1120→• Carrito.
+  1121→• Múltiples productos.
+  1122→• Resumen.
+  1123→• Confirmación.
+  1124→Pruebas:
+  1125→Realizar pedidos simulados:
+  1126→Ejemplo:
+  1127→• Pizza personalizada.
+  1128→• Taco.
+  1129→• Bebida.
+  1130→• Postre.
+  1131→Comprobar:
+  1132→Subtotal.
+  1133→Extras.
+  1134→Domicilio.
+  1135→Total.
+  1136→72. FASE 6 — USUARIOS Y DATOS DEL CLIENTE
+  1137→Construir:
+  1138→• Compra sin registro.
+  1139→• Registro opcional.
+  1140→• Historial.
+  1141→• Direcciones guardadas.
+  1142→Pruebas:
+  1143→Cliente:
+  1144→• Crear cuenta.
+  1145→• Pedir sin cuenta.
+  1146→• Repetir pedido.
+  1147→Revisar:
+  1148→• Seguridad.
+  1149→• Guardado correcto.
+  1150→• Privacidad.
+  1151→73. FASE 7 — PANEL ADMINISTRATIVO
+  1152→Construir:
+  1153→• Dashboard.
+  1154→• Gestión pedidos.
+  1155→• Productos.
+  1156→• Ingredientes.
+  1157→• Combos.
+  1158→• Configuración.
+  1159→Pruebas:
+  1160→Administrador:
+  1161→Debe poder:
+  1162→• Modificar menú.
+  1163→• Cambiar domicilio.
+  1164→• Crear empleados.
+  1165→• Crear combos.
+  1166→Errores críticos:
+  1167→• Usuario sin permisos puede acceder.
+  1168→• Cambios no se guardan.
+  1169→• Datos incorrectos.
+  1170→74. FASE 8 — COCINA Y REPARTIDORES
+  1171→Construir:
+  1172→Panel cocina.
+  1173→Panel reparto.
+  1174→Pruebas:
+  1175→Simular pedido completo:
+  1176→Cliente:
+  1177→Pedido enviado.
+  1178→↓
+  1179→Cocina:
+  1180→Preparando.
+  1181→↓
+  1182→Cocina:
+  1183→Listo.
+  1184→↓
+  1185→Repartidor:
+  1186→En camino.
+  1187→↓
+  1188→Entregado.
+  1189→Verificar:
+  1190→Cada usuario solo ve lo permitido.
+  1191→75. FASE 9 — WHATSAPP Y NOTIFICACIONES
+  1192→Construir:
+  1193→• Configuración de números.
+  1194→• Mensajes automáticos.
+  1195→Pruebas:
+  1196→Enviar:
+  1197→• Nuevo pedido.
+  1198→• Confirmación.
+  1199→• Pedido listo.
+  1200→• Entrega.
+  1201→Revisar:
+  1202→• Formato correcto.
+  1203→• Número correcto.
+  1204→• Mensaje correcto.
+  1205→76. FASE 10 — PWA Y PRODUCCIÓN
+  1206→Configurar:
+  1207→• Instalación.
+  1208→• Iconos.
+  1209→• Caché.
+  1210→• Rendimiento.
+  1211→Pruebas finales:
+  1212→Instalar aplicación.
+  1213→Probar:
+  1214→• Abrir sin navegador.
+  1215→• Cargar rápido.
+  1216→• Mantener sesión.
+  1217→• Funcionar correctamente.
+  1218→77. SISTEMA DE REPORTE DE ERRORES
+  1219→Cada fase debe generar un reporte:
+  1220→Ejemplo:
+  1221→FASE: Constructor de pizzas Estado: COMPLETADO Errores encontrados: 1. Ingrediente duplicado. Estado: CORREGIDO 2. Precio incorrecto. Estado: CORREGIDO Pruebas realizadas: ✓ Cliente ✓ Administrador Resultado: APROBADO
+  1222→78. CONTROL DE VERSIONES
+  1223→Guardar versiones:
+  1224→Ejemplo:
+  1225→Los Compas v0.1 Arquitectura inicial Los Compas v0.2 Diseño terminado Los Compas v0.3 Pedidos funcionando Los Compas v1.0 Producción
+  1226→Cada versión debe mantener:
+  1227→• Fecha.
+  1228→• Cambios realizados.
+  1229→• Errores solucionados.
+  1230→• Mejoras incluidas.
+  1231→79. AUDITORÍA FINAL ANTES DE PUBLICAR
+  1232→Realizar una revisión completa:
+  1233→Funcionalidad:
+  1234→✅ Pedidos funcionan.
+  1235→✅ Pagos funcionan.
+  1236→✅ WhatsApp funciona.
+  1237→✅ Administración funciona.
+  1238→✅ Cocina funciona.
+  1239→✅ Reparto funciona.
+  1240→Diseño:
+  1241→✅ Modo oscuro.
+  1242→✅ Imágenes correctas.
+  1243→✅ Responsive.
+  1244→✅ Animaciones correctas.
+  1245→Seguridad:
+  1246→✅ Usuarios protegidos.
+  1247→✅ Permisos correctos.
+  1248→✅ Datos seguros.
+  1249→Rendimiento:
+  1250→✅ Carga rápida.
+  1251→✅ Bajo consumo de datos.
+  1252→✅ Compatible con móviles económicos.
+  1253→80. REGLA FINAL DEL PROYECTO
+  1254→La IA debe comportarse como un equipo profesional de desarrollo.
+  1255→No debe:
+  1256→• Saltar fases.
+  1257→• Ignorar errores.
+  1258→• Entregar código sin probar.
+  1259→• Continuar con problemas conocidos.
+  1260→Debe:
+  1261→Construir → probar → corregir → mejorar → avanzar.
+  1262→Fin de la Parte 5
+  1263→La siguiente será la Parte 6 — Entrega final del proyecto, documentación, publicación gratuita, mantenimiento y evolución futura de Los Compas Pizzería.
+  1264→
+  1265→PARTE 6 — ENTREGA FINAL, PUBLICACIÓN, MANTENIMIENTO Y EVOLUCIÓN DEL PROYECTO
+  1266→
+  1267→81. ENTREGA FINAL DEL PROYECTO
+  1268→Al finalizar la construcción, entregar un proyecto completo y funcional listo para producción.
+  1269→La entrega debe incluir:
+  1270→1. Código fuente completo
+  1271→Debe contener:
+  1272→• Frontend.
+  1273→• Backend.
+  1274→• Base de datos.
+  1275→• Configuraciones.
+  1276→• Recursos gráficos.
+  1277→• Archivos PWA.
+  1278→• Documentación.
+  1279→El código debe estar:
+  1280→• Ordenado.
+  1281→• Comentado cuando sea necesario.
+  1282→• Sin archivos innecesarios.
+  1283→• Preparado para futuras actualizaciones.
+  1284→82. ESTRUCTURA FINAL DEL PROYECTO
+  1285→Entregar una estructura profesional:
+  1286→LOS_COMPAS_PIZZERIA/ │ ├── frontend/ │ ├── backend/ │ ├── database/ │ ├── assets/ │ │ ├── pizzas/ │ ├── ingredientes/ │ ├── comidas/ │ ├── postres/ │ ├── bebidas/ │ └── logo/ │ ├── pwa/ │ ├── documentation/ │ └── deployment/
+  1287→83. DOCUMENTACIÓN OBLIGATORIA
+  1288→Crear manuales completos.
+  1289→Manual del Administrador
+  1290→Debe explicar:
+  1291→Gestión del menú
+  1292→• Crear productos.
+  1293→• Cambiar precios.
+  1294→• Cambiar imágenes.
+  1295→• Activar productos.
+  1296→• Marcar agotados.
+  1297→Gestión de pedidos
+  1298→Explicar:
+  1299→• Ver pedidos.
+  1300→• Confirmarlos.
+  1301→• Cambiar estados.
+  1302→• Modificar domicilio.
+  1303→• Asignar repartidores.
+  1304→Gestión de empleados
+  1305→Explicar:
+  1306→• Crear usuarios.
+  1307→• Asignar permisos.
+  1308→• Modificar roles.
+  1309→Gestión de WhatsApp
+  1310→Explicar:
+  1311→• Agregar números.
+  1312→• Activar notificaciones.
+  1313→• Configurar mensajes.
+  1314→Manual de Cocina
+  1315→Debe explicar:
+  1316→• Entrar al sistema.
+  1317→• Ver pedidos.
+  1318→• Cambiar estados.
+  1319→• Marcar pedidos listos.
+  1320→Manual de Repartidor
+  1321→Debe explicar:
+  1322→• Ver pedidos asignados.
+  1323→• Consultar dirección.
+  1324→• Cambiar estado de entrega.
+  1325→Manual Técnico
+  1326→Debe incluir:
+  1327→• Arquitectura.
+  1328→• Tecnologías utilizadas.
+  1329→• Configuración.
+  1330→• Actualización.
+  1331→• Copias de seguridad.
+  1332→84. CONFIGURACIÓN INICIAL DEL NEGOCIO
+  1333→Al instalar la aplicación por primera vez:
+  1334→Crear asistente inicial:
+  1335→Paso 1
+  1336→Datos del negocio:
+  1337→• Nombre:
+  1338→Los Compas
+  1339→• Ciudad:
+  1340→Sancti Spíritus
+  1341→• Moneda:
+  1342→CUP
+  1343→Paso 2
+  1344→Crear administrador principal.
+  1345→Datos:
+  1346→• Nombre.
+  1347→• Usuario.
+  1348→• Contraseña segura.
+  1349→Paso 3
+  1350→Configurar:
+  1351→• WhatsApp.
+  1352→• Horarios.
+  1353→• Domicilio.
+  1354→• Logo.
+  1355→• Categorías.
+  1356→Paso 4
+  1357→Cargar productos iniciales.
+  1358→85. PUBLICACIÓN GRATUITA
+  1359→Preparar una guía para publicar utilizando servicios gratuitos.
+  1360→Priorizar:
+  1361→• Hosting gratuito.
+  1362→• Base de datos gratuita.
+  1363→• HTTPS gratuito.
+  1364→La guía debe explicar:
+  1365→Crear cuentas necesarias.
+  1366→Configurar proyecto.
+  1367→Subir código.
+  1368→Conectar base de datos.
+  1369→Configurar variables privadas.
+  1370→Publicar aplicación.
+  1371→86. CONFIGURACIÓN DE DOMINIO
+  1372→Primera etapa:
+  1373→Utilizar dirección gratuita.
+  1374→Ejemplo:
+  1375→loscompas.nombre-gratis.com
+  1376→Segunda etapa:
+  1377→Preparar posibilidad de conectar:
+  1378→www.loscompaspizzeria.com
+  1379→87. PRUEBA REAL ANTES DE ABRIR AL PÚBLICO
+  1380→Antes de aceptar clientes reales:
+  1381→Realizar simulación completa.
+  1382→Simulación cliente:
+  1383→Crear pedido:
+  1384→• Pizza personalizada.
+  1385→• Producto adicional.
+  1386→• Bebida.
+  1387→• Postre.
+  1388→Comprobar:
+  1389→• Cálculos.
+  1390→• Horario.
+  1391→• Domicilio.
+  1392→• Confirmación.
+  1393→Simulación cocina:
+  1394→Verificar:
+  1395→• Recepción.
+  1396→• Preparación.
+  1397→• Cambio de estado.
+  1398→Simulación repartidor:
+  1399→Verificar:
+  1400→• Dirección.
+  1401→• Entrega.
+  1402→• Estado final.
+  1403→88. SISTEMA DE MANTENIMIENTO
+  1404→Crear estrategia para mantener la aplicación.
+  1405→Revisar periódicamente:
+  1406→Productos
+  1407→• Precios.
+  1408→• Disponibilidad.
+  1409→• Nuevas ofertas.
+  1410→Sistema
+  1411→• Actualizaciones.
+  1412→• Seguridad.
+  1413→• Copias de respaldo.
+  1414→Imágenes
+  1415→Mantener:
+  1416→• Calidad.
+  1417→• Tamaño optimizado.
+  1418→• Estilo uniforme.
+  1419→89. COPIAS DE SEGURIDAD
+  1420→Crear sistema de respaldo.
+  1421→Debe permitir guardar:
+  1422→• Usuarios.
+  1423→• Pedidos.
+  1424→• Productos.
+  1425→• Configuración.
+  1426→Frecuencia recomendada:
+  1427→• Copias automáticas.
+  1428→• Exportación manual.
+  1429→90. ESCALABILIDAD FUTURA
+  1430→El sistema debe quedar preparado para añadir:
+  1431→Más sucursales
+  1432→Permitir en el futuro:
+  1433→• Varias ubicaciones.
+  1434→• Diferentes menús.
+  1435→• Diferentes administradores.
+  1436→Sistema avanzado de repartidores
+  1437→Añadir:
+  1438→• Asignación automática.
+  1439→• Historial de entregas.
+  1440→• Estadísticas.
+  1441→Inventario
+  1442→Futuro módulo:
+  1443→• Control de ingredientes.
+  1444→• Cantidades disponibles.
+  1445→• Alertas de falta de materiales.
+  1446→Estadísticas avanzadas
+  1447→Agregar:
+  1448→• Ventas por día.
+  1449→• Productos más vendidos.
+  1450→• Horarios más fuertes.
+  1451→• Clientes frecuentes.
+  1452→91. MEJORAS FUTURAS CON IA
+  1453→Preparar la arquitectura para añadir:
+  1454→• Recomendaciones inteligentes.
+  1455→• Predicción de ventas.
+  1456→• Asistente de pedidos.
+  1457→• Respuestas automáticas.
+  1458→92. CRITERIOS DE ACEPTACIÓN FINAL
+  1459→El proyecto solamente será aprobado si cumple:
+  1460→Cliente
+  1461→✅ Puede comprar.
+  1462→✅ Puede personalizar pizza.
+  1463→✅ Puede elegir horario.
+  1464→✅ Puede recibir confirmación.
+  1465→✅ Puede consultar estado.
+  1466→Administrador
+  1467→✅ Control total del negocio.
+  1468→✅ Puede cambiar todo sin programar.
+  1469→✅ Puede gestionar empleados.
+  1470→Cocina
+  1471→✅ Puede trabajar pedidos reales.
+  1472→Repartidor
+  1473→✅ Puede realizar entregas.
+  1474→Sistema
+  1475→✅ Seguro.
+  1476→✅ Rápido.
+  1477→✅ Instalable.
+  1478→✅ Mantenible.
+  1479→✅ Preparado para crecer.
+  1480→93. VERSIÓN FINAL DEL PRODUCTO
+  1481→Nombre:
+  1482→🍕 LOS COMPAS PIZZERÍA
+  1483→Tipo:
+  1484→Aplicación Web Progresiva (PWA).
+  1485→Estado esperado:
+  1486→Lista para operar una pizzería real con clientes, empleados y repartidores.
+  1487→94. REGLA FINAL DEL DESARROLLO
+  1488→La IA debe entregar un producto profesional, no una demostración.
+  1489→Cada decisión debe estar orientada a:
+  1490→• Uso diario.
+  1491→• Clientes reales.
+  1492→• Bajo costo.
+  1493→• Fácil administración.
+  1494→• Crecimiento futuro.
+  1495→El resultado final debe sentirse como una aplicación comercial creada por un equipo profesional.
+  1496→
+  1497→FIN DEL PROMPT MAESTRO DEFINITIVO
+  1498→LOS COMPAS PIZZERÍA PWA 🍕
+  1499→Este prompt completo (Partes 1 a 6) ya contiene toda la evolución del proyecto y el sistema de construcción con pruebas y corrección de errores por fase.
