@@ -38,6 +38,19 @@ export default function Home() {
     }
   }, [setView]);
 
+  // Sincronizar URL con la vista actual (bug #47: URL no se actualizaba al navegar)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (view === 'home') {
+      url.searchParams.delete('view');
+    } else {
+      url.searchParams.set('view', view);
+    }
+    // Usar replaceState para no llenar el historial con cada click
+    window.history.replaceState(window.history.state, '', url.toString());
+  }, [view]);
+
   return (
     <main id="main-scroll" className="min-h-screen flex flex-col bg-paper-texture">
       <ConnectionIndicator />

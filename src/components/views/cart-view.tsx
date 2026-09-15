@@ -6,7 +6,7 @@ import { Plus, Minus, Trash2, ShoppingBag, ChevronLeft, ArrowRight, Tag, X } fro
 import {
   formatCUP, ingredientQtyLabel, applyPromotions, findPromotionByCode,
 } from '@/lib/los-compas';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 
 export function CartView() {
@@ -39,7 +39,11 @@ export function CartView() {
     return { subtotal, extras, delivery, total };
   }));
 
-  const promoResult = applyPromotions(cart, promotions, products, appliedPromoCode);
+  // Memoizar cálculo de promociones (bug #22)
+  const promoResult = useMemo(
+    () => applyPromotions(cart, promotions, products, appliedPromoCode),
+    [cart, promotions, products, appliedPromoCode],
+  );
   const finalTotal = Math.max(0, totals.total - promoResult.totalDiscount);
 
   if (cart.length === 0) {
@@ -168,7 +172,13 @@ export function CartView() {
                         </p>
                       )}
                       <p className="text-sm font-bold text-primary">
-                        {formatCUP((item.unitPrice + item.extrasTotal) * item.qty)}
+                        {item.unitPrice === 0 && item.extrasTotal === 0 ? (
+                          <span className="bg-green-700/30 text-green-400 px-2 py-0.5 rounded-full text-[10px]">
+                            GRATIS
+                          </span>
+                        ) : (
+                          formatCUP((item.unitPrice + item.extrasTotal) * item.qty)
+                        )}
                       </p>
                     </div>
                   </div>

@@ -97,6 +97,19 @@ export const CATEGORIES: Category[] = [
 export const PRODUCTS: Product[] = [
   // ===== PIZZAS PREDETERMINADAS =====
   {
+    id: 'pizza_custom',
+    name: 'Pizza Personalizada',
+    description: 'Pizza armada por el cliente con ingredientes a elección.',
+    category: 'pizzas',
+    emoji: '🍕',
+    price: 0,
+    available: true,
+    prepTime: 22,
+    isPizza: true,
+    defaultSize: 'familiar_42x30',
+    defaultIngredients: ['queso'],
+  },
+  {
     id: 'pizza_muzzarella',
     name: 'Pizza Muzzarella',
     description: 'Clásica: masa artesanal, salsa de tomate y queso fundido.',

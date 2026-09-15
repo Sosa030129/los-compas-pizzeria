@@ -43,11 +43,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1a1410",
+  themeColor: "#7a1f2b",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: "cover",
 };
 
@@ -60,7 +60,7 @@ export default function RootLayout({
     <html lang="es" className="dark" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1a1410" />
+        <meta name="theme-color" content="#7a1f2b" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body

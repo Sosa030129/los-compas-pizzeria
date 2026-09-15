@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { LogOut, ChefHat, Clock, MapPin, Phone, Package } from 'lucide-react';
 import { formatCUP, formatDateTime, formatTime, getStateInfo } from '@/lib/los-compas';
+import { canAccessView } from '@/lib/auth';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -19,14 +20,20 @@ export function KitchenView() {
 
   const [filter, setFilter] = useState<'pending' | 'preparing' | 'done'>('pending');
 
-  // Redirigir al login si no hay sesión
+  // RBAC: redirigir si no tiene acceso a cocina
   useEffect(() => {
     if (!currentEmployee) {
       setView('login');
+    } else if (!canAccessView(currentEmployee, 'kitchen')) {
+      toast.error('No tienes permisos para acceder al panel de cocina');
+      if (canAccessView(currentEmployee, 'admin')) setView('admin');
+      else if (canAccessView(currentEmployee, 'delivery')) setView('delivery');
+      else setView('home');
     }
   }, [currentEmployee, setView]);
 
   if (!currentEmployee) return null;
+  if (!canAccessView(currentEmployee, 'kitchen')) return null;
 
   const pending = orders.filter((o) => ['confirmado', 'recibido'].includes(o.state));
   const preparing = orders.filter((o) => o.state === 'preparando');

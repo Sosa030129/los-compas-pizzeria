@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore, useShallow } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Check, CreditCard, Banknote, Clock, MapPin, User, Phone, AlertCircle, Tag } from 'lucide-react';
+import { ChevronLeft, Check, CreditCard, Banknote, Clock, MapPin, User, Phone, AlertCircle, Tag, Loader2 } from 'lucide-react';
 import {
   checkOrderTime, isAnyOrderSlotOpen, nextAvailableSlotLabel, formatCUP, applyPromotions, isValidPhone,
 } from '@/lib/los-compas';
@@ -31,8 +31,11 @@ export function CheckoutView() {
     return { subtotal, extras, delivery, total };
   }));
 
-  // Aplicar promociones
-  const promoResult = applyPromotions(cart, promotions, products, appliedPromoCode);
+  // Aplicar promociones memoizado (bug #22: evita recalcular en cada render)
+  const promoResult = useMemo(
+    () => applyPromotions(cart, promotions, products, appliedPromoCode),
+    [cart, promotions, products, appliedPromoCode],
+  );
   const totalAfterDiscount = Math.max(0, totals.total - promoResult.totalDiscount);
 
   const [name, setName] = useState('');
@@ -60,8 +63,10 @@ export function CheckoutView() {
   if (deliveryMode === 'domicilio' && !address.trim()) errors.address = 'Tu dirección es obligatoria';
 
   const [touched, setTouched] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handlePlace = () => {
+    if (submitting) return; // Prevenir doble submit (bug #19)
     setTouched(true);
     if (Object.keys(errors).length > 0) {
       toast.error('Revisa los campos del formulario');
@@ -73,31 +78,40 @@ export function CheckoutView() {
       return;
     }
 
-    // Agregar items gratis (productos promocionales) al carrito antes de hacer el pedido
-    if (promoResult.freeItems.length > 0) {
-      for (const fi of promoResult.freeItems) {
-        useStore.getState().addToCart(fi);
+    setSubmitting(true);
+
+    try {
+      // Agregar items gratis (productos promocionales) al carrito antes de hacer el pedido
+      if (promoResult.freeItems.length > 0) {
+        for (const fi of promoResult.freeItems) {
+          useStore.getState().addToCart(fi);
+        }
       }
+
+      const order = placeOrder({
+        customerName: name.trim(),
+        customerPhone: phone.trim(),
+        customerAddress: deliveryMode === 'domicilio' ? address.trim() : 'Recogida en tienda',
+        reference: reference.trim(),
+        paymentMethod,
+        timeSlot,
+        deliveryMode,
+        scheduledTime,
+        notes: notes.trim(),
+        discount: promoResult.totalDiscount,
+        surcharge: paymentMethod === 'transferencia' ? surcharge : 0,
+      });
+
+      // Limpiar código promocional aplicado
+      useStore.getState().setAppliedPromoCode(null);
+
+      toast.success(`Pedido ${order.code} creado`);
+      setView('tracking');
+    } catch (e) {
+      toast.error('Error al crear el pedido. Intenta de nuevo.');
+    } finally {
+      setSubmitting(false);
     }
-
-    const order = placeOrder({
-      customerName: name.trim(),
-      customerPhone: phone.trim(),
-      customerAddress: deliveryMode === 'domicilio' ? address.trim() : 'Recogida en tienda',
-      reference: reference.trim(),
-      paymentMethod,
-      timeSlot,
-      deliveryMode,
-      scheduledTime,
-      notes: notes.trim(),
-      discount: promoResult.totalDiscount,
-    });
-
-    // Limpiar código promocional aplicado
-    useStore.getState().setAppliedPromoCode(null);
-
-    toast.success(`Pedido ${order.code} creado`);
-    setView('tracking');
   };
 
   if (cart.length === 0) {
@@ -403,9 +417,16 @@ export function CheckoutView() {
           </div>
           <button
             onClick={handlePlace}
-            className="bg-primary text-primary-foreground px-6 py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop"
+            disabled={submitting}
+            className="bg-primary text-primary-foreground px-6 py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop disabled:opacity-50 flex items-center gap-2"
           >
-            Confirmar pedido
+            {submitting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Creando...
+              </>
+            ) : (
+              'Confirmar pedido'
+            )}
           </button>
         </div>
       </div>

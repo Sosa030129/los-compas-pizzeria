@@ -58,14 +58,17 @@ export function StatsCharts() {
   const orders = useStore((s) => s.orders);
   const products = useStore((s) => s.products);
 
-  // 1. Ventas por día (últimos 7 días) - solo pedidos entregados
+  // 1. Ventas por día (últimos 7 días) - solo pedidos entregados, por fecha de ENTREGA
   const salesByDay = useMemo(() => {
     const days = last7Days();
     return days.map((d) => {
       const next = d.ts + 24 * 60 * 60 * 1000;
-      const dayOrders = orders.filter((o) =>
-        o.state === 'entregado' && o.createdAt >= d.ts && o.createdAt < next
-      );
+      const dayOrders = orders.filter((o) => {
+        if (o.state !== 'entregado') return false;
+        // Usar deliveredAt si existe, si no caer a createdAt (pedidos viejos)
+        const refDate = o.deliveredAt || o.createdAt;
+        return refDate >= d.ts && refDate < next;
+      });
       return {
         label: d.label,
         ventas: dayOrders.reduce((sum, o) => sum + o.total, 0),
@@ -273,21 +276,23 @@ export function StatsCharts() {
               <BarChart
                 data={topProducts}
                 layout="vertical"
-                margin={{ top: 5, right: 10, bottom: 5, left: 30 }}
+                margin={{ top: 5, right: 30, bottom: 5, left: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#3a2c1f" horizontal={false} />
-                <XAxis type="number" stroke="#a08868" fontSize={10} tickLine={false} axisLine={false} />
+                <XAxis type="number" stroke="#a08868" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
                 <YAxis
-                  type="number"
-                  dataKey="count"
-                  stroke="#a08868"
+                  type="category"
+                  dataKey="name"
+                  stroke="#ffd966"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={() => ''}
-                >
-                  {/* Custom labels for products */}
-                </YAxis>
+                  width={100}
+                  tickFormatter={(value: string, idx: number) => {
+                    const p = topProducts[idx];
+                    return p ? `${p.emoji} ${value.length > 12 ? value.slice(0, 12) + '…' : value}` : value;
+                  }}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#1a1410',
@@ -296,26 +301,10 @@ export function StatsCharts() {
                     fontSize: '12px',
                   }}
                   formatter={(value: number) => [`${value} unidades`, 'Vendido']}
-                  labelFormatter={(_, payload) => {
-                    if (payload && payload[0]) {
-                      return `${payload[0].payload.emoji} ${payload[0].payload.name}`;
-                    }
-                    return '';
-                  }}
                 />
                 <Bar dataKey="count" radius={[0, 6, 6, 0]} fill="#7a1f2b" />
               </BarChart>
             </ResponsiveContainer>
-            <div className="mt-2 space-y-1">
-              {topProducts.map((p, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs">
-                  <span className="w-5 text-right font-bold text-primary">#{i + 1}</span>
-                  <span className="text-base">{p.emoji}</span>
-                  <span className="flex-1 truncate">{p.name}</span>
-                  <span className="font-bold">{p.count} u</span>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>

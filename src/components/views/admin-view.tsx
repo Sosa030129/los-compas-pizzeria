@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { useConfirm } from '@/components/confirm-provider';
+import { canAccessView, hasPermission, isTimeRangeValid } from '@/lib/auth';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Package, Salad, Users, MessageCircle, Settings, LogOut,
@@ -16,7 +17,7 @@ import {
 import { toast } from 'sonner';
 import type { Product, Employee, WhatsAppNumber, Permission, Role, Ingredient, Promotion, PromotionType } from '@/lib/types';
 
-type AdminTab = 'dashboard' | 'orders' | 'products' | 'ingredients' | 'categories' | 'promotions' | 'combos' | 'employees' | 'whatsapp' | 'config' | 'logs' | 'backup' | 'help';
+type AdminTab = 'dashboard' | 'orders' | 'products' | 'ingredients' | 'categories' | 'sizes' | 'promotions' | 'combos' | 'employees' | 'whatsapp' | 'config' | 'backup' | 'help' | 'logs';
 
 export function AdminView() {
   const currentEmployee = useStore((s) => s.currentEmployee);
@@ -24,14 +25,20 @@ export function AdminView() {
   const setView = useStore((s) => s.setView);
   const [tab, setTab] = useState<AdminTab>('dashboard');
 
-  // Redirigir al login si no hay sesión (en efecto, no durante el render)
+  // RBAC: redirigir al login si no hay sesión O si no tiene acceso al admin
   useEffect(() => {
     if (!currentEmployee) {
       setView('login');
+    } else if (!canAccessView(currentEmployee, 'admin')) {
+      toast.error('No tienes permisos para acceder al panel de administración');
+      if (canAccessView(currentEmployee, 'kitchen')) setView('kitchen');
+      else if (canAccessView(currentEmployee, 'delivery')) setView('delivery');
+      else setView('home');
     }
   }, [currentEmployee, setView]);
 
   if (!currentEmployee) return null;
+  if (!canAccessView(currentEmployee, 'admin')) return null;
 
   const tabs: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -39,6 +46,7 @@ export function AdminView() {
     { id: 'products', label: 'Productos', icon: Package },
     { id: 'ingredients', label: 'Ingredientes', icon: Salad },
     { id: 'categories', label: 'Categorías', icon: Tags },
+    { id: 'sizes', label: 'Tamaños', icon: Percent },
     { id: 'promotions', label: 'Promociones', icon: Percent },
     { id: 'combos', label: 'Combos', icon: ShoppingBag },
     { id: 'employees', label: 'Empleados', icon: Users },
@@ -98,6 +106,7 @@ export function AdminView() {
         {tab === 'products' && <ProductsTab />}
         {tab === 'ingredients' && <IngredientsTab />}
         {tab === 'categories' && <CategoriesTab />}
+        {tab === 'sizes' && <SizesTab />}
         {tab === 'promotions' && <PromotionsTab />}
         {tab === 'combos' && <CombosTab />}
         {tab === 'employees' && <EmployeesTab />}
@@ -1184,6 +1193,37 @@ function ConfigTab() {
   const [local, setLocal] = useState(config);
 
   const handleSave = () => {
+    // Validaciones de horarios (bugs #61, #62)
+    const timeFields = [
+      { name: 'morningStart', val: local.morningStart },
+      { name: 'morningEnd', val: local.morningEnd },
+      { name: 'afternoonStart', val: local.afternoonStart },
+      { name: 'afternoonEnd', val: local.afternoonEnd },
+    ];
+    for (const f of timeFields) {
+      if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(f.val)) {
+        toast.error(`Horario inválido en ${f.name}: debe ser HH:MM (ej: 08:00)`);
+        return;
+      }
+    }
+    if (!isTimeRangeValid(local.morningStart, local.morningEnd)) {
+      toast.error('Horario de mañana: el inicio debe ser anterior al fin');
+      return;
+    }
+    if (!isTimeRangeValid(local.afternoonStart, local.afternoonEnd)) {
+      toast.error('Horario de tarde: el inicio debe ser anterior al fin');
+      return;
+    }
+    // Validar recargo (bug #63)
+    if (local.transferSurcharge < 0 || local.transferSurcharge > 1) {
+      toast.error('El recargo por transferencia debe estar entre 0 y 1 (0% a 100%)');
+      return;
+    }
+    // Validar costo de domicilio
+    if (local.deliveryBase < 0) {
+      toast.error('El costo base de domicilio no puede ser negativo');
+      return;
+    }
     updateConfig(local);
     toast.success('Configuración guardada');
   };
@@ -1554,6 +1594,27 @@ function PromotionForm({
               onClick={() => {
                 if (!name.trim()) {
                   toast.error('El nombre es obligatorio');
+                  return;
+                }
+                // Validaciones (bugs #44, #45, #46)
+                if (inputToDate(validFrom) >= inputToDate(validTo)) {
+                  toast.error('La fecha de inicio debe ser anterior a la fecha de fin');
+                  return;
+                }
+                if (type === 'percent' && (value < 1 || value > 100)) {
+                  toast.error('El porcentaje debe estar entre 1 y 100');
+                  return;
+                }
+                if (type === 'fixed' && value <= 0) {
+                  toast.error('El monto fijo debe ser mayor que 0');
+                  return;
+                }
+                if (type === 'free_product' && (!freeProductId || value <= 0)) {
+                  toast.error('Configura un producto y un umbral positivo');
+                  return;
+                }
+                if (type === 'bundle' && (bundleBuyQty < 1 || bundleGetQty < 1)) {
+                  toast.error('Las cantidades del bundle deben ser ≥ 1');
                   return;
                 }
                 onSave({
@@ -2222,6 +2283,64 @@ function HelpTab() {
         💡 <strong>Tip:</strong> Todo lo que configures aquí se guarda automáticamente
         en el navegador (localStorage). Usa la pestaña Backup para exportar/importar
         cuando cambies de dispositivo o quieras hacer una copia de seguridad.
+      </div>
+    </div>
+  );
+}
+
+// ===== Tamaños de Pizza =====
+function SizesTab() {
+  const sizes = useStore((s) => s.sizes);
+  const saveSize = useStore((s) => s.saveSize);
+
+  return (
+    <div className="space-y-3">
+      <div className="cartoon-border-primary bg-card rounded-2xl p-4">
+        <h3 className="font-cartoon text-base mb-1">📏 Precios base por tamaño</h3>
+        <p className="text-xs text-muted-foreground">
+          Aquí puedes cambiar el precio base de cada tamaño de pizza. Estos precios
+          se usan tanto en el menú del cliente como en el constructor visual.
+          Los precios de ingredientes (extras) se configuran en la pestaña "Ingredientes"
+          y se aplican adicionalmente al precio base.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        {sizes.map((s) => (
+          <div key={s.id} className="cartoon-border bg-card rounded-xl p-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold leading-tight">{s.label}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Precio actual: <strong className="text-primary">{formatCUP(s.basePrice)}</strong>
+              </p>
+            </div>
+            <label className="text-[10px] font-bold text-muted-foreground">Nuevo precio (CUP)</label>
+            <input
+              type="number"
+              defaultValue={s.basePrice}
+              min="0"
+              aria-label={`Precio para ${s.label}`}
+              onBlur={(e) => {
+                const v = parseInt(e.target.value);
+                if (!isNaN(v) && v >= 0 && v !== s.basePrice) {
+                  saveSize(s.id, v);
+                  toast.success(`Precio de ${s.label} actualizado a ${formatCUP(v)}`);
+                } else if (isNaN(v) || v < 0) {
+                  toast.error('El precio debe ser un número positivo');
+                  e.target.value = String(s.basePrice);
+                }
+              }}
+              className="bg-background border border-border rounded-xl px-3 py-2 w-28 text-sm text-right"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-secondary/30 border border-border rounded-2xl p-3 text-[11px] text-muted-foreground">
+        💡 Tip: los precios base son <strong>obligatorios</strong> para todas las pizzas
+        (las pizzas no tienen un campo &quot;precio&quot; en el formulario de producto porque
+        su costo depende del tamaño). Si cambias un precio aquí, automáticamente
+        se actualiza en el menú del cliente, el constructor y el detalle de pedidos.
       </div>
     </div>
   );

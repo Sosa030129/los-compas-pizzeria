@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { LogOut, Bike, MapPin, Phone, Package, User, Clock, Navigation } from 'lucide-react';
 import { formatCUP, formatDateTime, getStateInfo, whatsappLink } from '@/lib/los-compas';
+import { canAccessView } from '@/lib/auth';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -16,28 +17,33 @@ export function DeliveryView() {
   const employees = useStore((s) => s.employees);
   const setOrderState = useStore((s) => s.setOrderState);
 
-  const [filter, setFilter] = useState<'assigned' | 'enroute' | 'delivered'>('assigned');
+  const [filter, setFilter] = useState<'assigned' | 'delivered'>('assigned');
 
-  // Redirigir al login si no hay sesión
+  // RBAC: redirigir si no tiene acceso a reparto
   useEffect(() => {
     if (!currentEmployee) {
       setView('login');
+    } else if (!canAccessView(currentEmployee, 'delivery')) {
+      toast.error('No tienes permisos para acceder al panel de reparto');
+      if (canAccessView(currentEmployee, 'admin')) setView('admin');
+      else if (canAccessView(currentEmployee, 'kitchen')) setView('kitchen');
+      else setView('home');
     }
   }, [currentEmployee, setView]);
 
   if (!currentEmployee) return null;
+  if (!canAccessView(currentEmployee, 'delivery')) return null;
 
-  // Pedidos asignados a este repartidor
-  const myOrders = orders.filter((o) =>
-    o.assignedDelivery === currentEmployee.id ||
-    (currentEmployee.role === 'repartidor' && ['camino', 'entregado'].includes(o.state))
+  // Pedidos asignados EXCLUSIVAMENTE a este repartidor (no a cualquier repartidor)
+  const myOrders = orders.filter(
+    (o) => o.assignedDelivery === currentEmployee.id
   );
 
-  const assigned = myOrders.filter((o) => o.state === 'camino' && !o.deliveredAt);
-  const enroute = myOrders.filter((o) => o.state === 'camino');
+  // Solo 2 estados: pedidos en camino (pendientes) y entregados
+  const assigned = myOrders.filter((o) => o.state === 'camino');
   const delivered = myOrders.filter((o) => o.state === 'entregado');
 
-  const list = filter === 'assigned' ? assigned : filter === 'enroute' ? enroute : delivered;
+  const list = filter === 'assigned' ? assigned : delivered;
 
   return (
     <div className="animate-screen-enter pb-24">
@@ -59,8 +65,7 @@ export function DeliveryView() {
           </button>
         </div>
         <div className="flex gap-2 mt-3 max-w-3xl mx-auto">
-          <Stat label="Asignados" value={assigned.length} emoji="📦" active={filter === 'assigned'} onClick={() => setFilter('assigned')} />
-          <Stat label="En ruta" value={enroute.length} emoji="🛵" active={filter === 'enroute'} onClick={() => setFilter('enroute')} />
+          <Stat label="Asignados" value={assigned.length} emoji="🛵" active={filter === 'assigned'} onClick={() => setFilter('assigned')} />
           <Stat label="Entregados" value={delivered.length} emoji="✅" active={filter === 'delivered'} onClick={() => setFilter('delivered')} />
         </div>
       </div>

@@ -29,6 +29,10 @@ import {
   CATEGORIES, COMBOS, CONFIG, EMPLOYEES, INGREDIENTS, PRODUCTS, PROMOTIONS, SIZES, WHATSAPP,
 } from './seed';
 import { uid, shortCode } from './los-compas';
+import {
+  canAccessView, checkLoginRateLimit, registerFailedLogin, resetLoginAttempts,
+  verifyPassword, hashPassword, isHashedPassword,
+} from './auth';
 
 interface StoreActions {
   // UI
@@ -56,6 +60,7 @@ interface StoreActions {
     scheduledTime: string;
     notes?: string;
     discount?: number;
+    surcharge?: number;
   }) => Order;
   updateOrder: (id: string, patch: Partial<Order>) => void;
   setOrderState: (id: string, state: OrderState) => void;
@@ -77,6 +82,9 @@ interface StoreActions {
   toggleCategoryVisible: (id: string) => void;
   deleteCategory: (id: string) => void;
 
+  // Tamaños de pizza
+  saveSize: (id: string, basePrice: number) => void;
+
   // Promociones (admin)
   savePromotion: (p: Promotion) => void;
   togglePromotionActive: (id: string) => void;
@@ -86,7 +94,7 @@ interface StoreActions {
   saveEmployee: (e: Employee) => void;
   toggleEmployeeActive: (id: string) => void;
   deleteEmployee: (id: string) => void;
-  loginEmployee: (username: string, password: string) => boolean;
+  loginEmployee: (username: string, password: string) => Promise<{ ok: boolean; error: string | null }>;
   logoutEmployee: () => void;
 
   // WhatsApp
@@ -118,6 +126,7 @@ const initialState: AppState = {
   appliedPromoCode: null,
   cart: [],
   orders: [],
+  lastCustomerPhone: null,
   employees: EMPLOYEES,
   currentEmployee: null,
   whatsapp: WHATSAPP,
@@ -146,6 +155,12 @@ function computeCartTotals(state: AppState): { subtotal: number; extras: number;
   const base = subtotal + extras;
   const total = delivery === null ? base : base + delivery;
   return { subtotal, extras, delivery, total };
+}
+
+// Cap de logs para evitar localStorage overflow (max 200)
+const MAX_LOGS = 200;
+function capLogs<T extends ActivityLog>(logs: T[]): T[] {
+  return logs.slice(0, MAX_LOGS);
 }
 
 export const useStore = create<Store>()(
@@ -179,7 +194,7 @@ export const useStore = create<Store>()(
       removeFromCart: (id) =>
         set((s) => ({ cart: s.cart.filter((c) => c.id !== id) })),
 
-      clearCart: () => set({ cart: [] }),
+      clearCart: () => set({ cart: [], appliedPromoCode: null }),
 
       // ===== Pedidos =====
       placeOrder: (data) => {
@@ -192,6 +207,8 @@ export const useStore = create<Store>()(
         }
         const base = subtotal + extras;
         const discount = data.discount || 0;
+        const surcharge = data.surcharge || 0;
+        // Total = base - discount + delivery(0 al crear, se setea después) + surcharge
         const order: Order = {
           id: uid('order'),
           code: shortCode(),
@@ -204,7 +221,8 @@ export const useStore = create<Store>()(
           extras,
           delivery: data.deliveryMode === 'domicilio' ? null : 0,
           discount,
-          total: Math.max(0, base - discount),
+          surcharge,
+          total: Math.max(0, base - discount + surcharge),
           paymentMethod: data.paymentMethod,
           timeSlot: data.timeSlot,
           deliveryMode: data.deliveryMode,
@@ -216,18 +234,20 @@ export const useStore = create<Store>()(
         set((s) => ({
           orders: [order, ...s.orders],
           cart: [],
+          appliedPromoCode: null,
+          lastCustomerPhone: data.customerPhone,
           currentView: 'tracking',
           selectedOrderId: order.id,
-          logs: [
+          logs: capLogs([
             {
               id: uid('log'),
               user: data.customerName,
               action: 'Nuevo pedido',
-              detail: `Código ${order.code} - Total provisional ${order.total}`,
+              detail: `Código ${order.code} - Total ${order.total}`,
               date: Date.now(),
             },
             ...s.logs,
-          ],
+          ]),
         }));
         return order;
       },
@@ -247,7 +267,7 @@ export const useStore = create<Store>()(
           if (state === 'entregado') patch.deliveredAt = Date.now();
           return {
             orders: s.orders.map((o) => (o.id === id ? { ...o, ...patch } : o)),
-            logs: [
+            logs: capLogs([
               {
                 id: uid('log'),
                 user,
@@ -256,7 +276,7 @@ export const useStore = create<Store>()(
                 date: Date.now(),
               },
               ...s.logs,
-            ],
+            ]),
           };
         }),
 
@@ -265,30 +285,41 @@ export const useStore = create<Store>()(
           const user = s.currentEmployee?.name || 'Sistema';
           const order = s.orders.find((o) => o.id === id);
           if (!order) return s;
-          const newTotal = Math.max(0, order.subtotal + order.extras - order.discount + delivery);
+          // Validar que delivery sea un número >= 0
+          const safeDelivery = Math.max(0, Number.isFinite(delivery) ? delivery : 0);
+          // Total = subtotal + extras - discount + delivery + surcharge
+          const newTotal = Math.max(0, order.subtotal + order.extras - order.discount + safeDelivery + order.surcharge);
           return {
             orders: s.orders.map((o) =>
-              o.id === id ? { ...o, delivery, total: newTotal } : o
+              o.id === id ? { ...o, delivery: safeDelivery, total: newTotal } : o
             ),
-            logs: [
+            logs: capLogs([
               {
                 id: uid('log'),
                 user,
                 action: 'Cambio de domicilio',
-                detail: `Pedido ${order.code}: domicilio = ${delivery} CUP`,
+                detail: `Pedido ${order.code}: domicilio = ${safeDelivery} CUP`,
                 date: Date.now(),
               },
               ...s.logs,
-            ],
+            ]),
           };
         }),
 
       assignDelivery: (orderId, employeeId) =>
-        set((s) => ({
-          orders: s.orders.map((o) =>
-            o.id === orderId ? { ...o, assignedDelivery: employeeId, state: 'camino' } : o
-          ),
-        })),
+        set((s) => {
+          // Validar que el pedido esté en estado 'listo' antes de asignar
+          const order = s.orders.find((o) => o.id === orderId);
+          if (!order || order.state !== 'listo') return s;
+          // Validar que el empleado asignado sea un repartidor activo
+          const driver = s.employees.find((e) => e.id === employeeId && e.active && e.role === 'repartidor');
+          if (!driver) return s;
+          return {
+            orders: s.orders.map((o) =>
+              o.id === orderId ? { ...o, assignedDelivery: employeeId, state: 'camino' } : o
+            ),
+          };
+        }),
 
       // ===== Productos =====
       saveProduct: (p) =>
@@ -352,6 +383,14 @@ export const useStore = create<Store>()(
       deleteCategory: (id) =>
         set((s) => ({ categories: s.categories.filter((c) => c.id !== id) })),
 
+      // ===== Tamaños de pizza =====
+      saveSize: (id, basePrice) =>
+        set((s) => ({
+          sizes: s.sizes.map((sz) =>
+            sz.id === id ? { ...sz, basePrice: Math.max(0, Math.floor(basePrice)) } : sz
+          ),
+        })),
+
       // ===== Promociones =====
       setAppliedPromoCode: (code) => set({ appliedPromoCode: code }),
 
@@ -378,42 +417,88 @@ export const useStore = create<Store>()(
       saveEmployee: (e) =>
         set((s) => {
           const exists = s.employees.find((x) => x.id === e.id);
+          // Prevenir degradar al admin principal (rol admin → otro rol)
+          if (exists?.role === 'admin' && e.role !== 'admin') {
+            return s;
+          }
+          // Prevenir username duplicado (case-insensitive)
+          const duplicate = s.employees.find(
+            (x) => x.id !== e.id && x.username.toLowerCase() === e.username.toLowerCase()
+          );
+          if (duplicate) return s;
+
           if (exists) {
-            return { employees: s.employees.map((x) => (x.id === e.id ? e : x)) };
+            const newEmployees = s.employees.map((x) => (x.id === e.id ? e : x));
+            // Sync currentEmployee si se editó a sí mismo (evita stale)
+            const newCurrent = s.currentEmployee?.id === e.id ? { ...e } : s.currentEmployee;
+            return { employees: newEmployees, currentEmployee: newCurrent };
           }
           return { employees: [...s.employees, e] };
         }),
+
       toggleEmployeeActive: (id) =>
-        set((s) => ({
-          employees: s.employees.map((e) =>
-            e.id === id ? { ...e, active: !e.active } : e
-          ),
-        })),
+        set((s) => {
+          // Prevenir que el admin se desactive a sí mismo (lockout)
+          if (id === s.currentEmployee?.id) return s;
+          return {
+            employees: s.employees.map((e) =>
+              e.id === id ? { ...e, active: !e.active } : e
+            ),
+          };
+        }),
 
       deleteEmployee: (id) =>
         set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
 
-      loginEmployee: (username, password) => {
-        const emp = get().employees.find(
-          (e) => e.username === username && e.password === password && e.active
-        );
-        if (emp) {
-          set((s) => ({
-            currentEmployee: emp,
-            logs: [
-              {
-                id: uid('log'),
-                user: emp.name,
-                action: 'Inicio de sesión',
-                detail: `Rol: ${emp.role}`,
-                date: Date.now(),
-              },
-              ...s.logs,
-            ],
-          }));
-          return true;
+      loginEmployee: async (username: string, password: string) => {
+        // Rate limit
+        const rl = checkLoginRateLimit(username);
+        if (!rl.allowed) {
+          return { ok: false, error: `Demasiados intentos. Espera ${Math.ceil(rl.remainingMs / 1000)}s.` };
         }
-        return false;
+        const emp = get().employees.find(
+          (e) => e.username.toLowerCase() === username.toLowerCase() && e.active
+        );
+        if (!emp) {
+          registerFailedLogin(username);
+          return { ok: false, error: 'Usuario o contraseña incorrectos' };
+        }
+        const passwordOk = await verifyPassword(password, emp.password);
+        if (!passwordOk) {
+          registerFailedLogin(username);
+          return { ok: false, error: 'Usuario o contraseña incorrectos' };
+        }
+        // Login exitoso
+        resetLoginAttempts(username);
+        // Migrar password legacy plain a hash al primer login exitoso
+        let updatedEmployees = get().employees;
+        let employeeForSession: Employee = { ...emp };
+        if (!isHashedPassword(emp.password)) {
+          try {
+            const hashed = await hashPassword(password);
+            updatedEmployees = updatedEmployees.map((x) =>
+              x.id === emp.id ? { ...x, password: hashed } : x
+            );
+            employeeForSession = { ...emp, password: hashed };
+          } catch {
+            // si falla, continuar con password legacy
+          }
+        }
+        set((s) => ({
+          employees: updatedEmployees,
+          currentEmployee: employeeForSession,
+          logs: capLogs([
+            {
+              id: uid('log'),
+              user: employeeForSession.name,
+              action: 'Inicio de sesión',
+              detail: `Rol: ${employeeForSession.role}`,
+              date: Date.now(),
+            },
+            ...s.logs,
+          ]),
+        }));
+        return { ok: true, error: null };
       },
 
       logoutEmployee: () => {
@@ -422,7 +507,7 @@ export const useStore = create<Store>()(
           set((s) => ({
             currentEmployee: null,
             currentView: 'home',
-            logs: [
+            logs: capLogs([
               {
                 id: uid('log'),
                 user: emp.name,
@@ -431,7 +516,7 @@ export const useStore = create<Store>()(
                 date: Date.now(),
               },
               ...s.logs,
-            ],
+            ]),
           }));
         } else {
           set({ currentEmployee: null, currentView: 'home' });
@@ -465,10 +550,10 @@ export const useStore = create<Store>()(
       // ===== Logs =====
       addLog: (user, action, detail) =>
         set((s) => ({
-          logs: [
+          logs: capLogs([
             { id: uid('log'), user, action, detail, date: Date.now() },
             ...s.logs,
-          ],
+          ]),
         })),
 
       // ===== Backup / Restore =====
@@ -537,6 +622,7 @@ export const useStore = create<Store>()(
         promotions: s.promotions,
         appliedPromoCode: s.appliedPromoCode,
         orders: s.orders,
+        lastCustomerPhone: s.lastCustomerPhone,
         employees: s.employees,
         currentEmployee: s.currentEmployee,
         whatsapp: s.whatsapp,

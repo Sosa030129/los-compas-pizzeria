@@ -26,11 +26,20 @@ export function BuilderView() {
   const currentSize = sizes.find((s) => s.id === size)!;
   const borderPrice = currentSize.basePrice * 0.20;
 
+  // El queso está incluido en el precio base. Solo cobramos como extra las porciones
+  // adicionales a 1 (bug #11: misma pizza con precios distintos menú vs builder).
+  const BASE_INCLUDED = new Set(['queso']); // ingredientes con 1 porción gratis en el precio base
+
   const extras = selected.reduce((sum, ci) => {
     const ing = ingredients.find((i) => i.id === ci.ingredientId);
     if (!ing) return sum;
     const price = ing.priceBySize[size] || 0;
-    return sum + price * ingredientQtyMultiplier(ci.qty);
+    const mult = ingredientQtyMultiplier(ci.qty); // 1, 2, or 3
+    // Si es ingrediente base incluido y qty > 1, cobrar (mult - 1) porciones extra
+    // Si no es base incluido, cobrar todas las porciones
+    const freePortions = BASE_INCLUDED.has(ci.ingredientId) ? 1 : 0;
+    const chargeable = Math.max(0, mult - freePortions);
+    return sum + price * chargeable;
   }, 0);
 
   const total = currentSize.basePrice + (border ? borderPrice : 0) + extras;
@@ -51,6 +60,8 @@ export function BuilderView() {
   const handleAddToCart = () => {
     const item: CartItem = {
       id: uid('cart'),
+      // productId seteado para que promos de categoría 'pizzas' apliquen (bugs #86, #120)
+      productId: 'pizza_custom',
       name: 'Pizza Personalizada',
       emoji: '🍕',
       unitPrice: currentSize.basePrice + (border ? borderPrice : 0),

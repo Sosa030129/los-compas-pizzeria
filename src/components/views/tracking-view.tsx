@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 export function TrackingView() {
   const orders = useStore((s) => s.orders);
+  const lastCustomerPhone = useStore((s) => s.lastCustomerPhone);
   const selectedOrderId = useStore((s) => s.selectedOrderId);
   const setSelectedOrder = useStore((s) => s.setSelectedOrder);
   const setView = useStore((s) => s.setView);
@@ -18,12 +19,25 @@ export function TrackingView() {
 
   const [search, setSearch] = useState('');
 
-  const myOrders = orders.filter((o) => {
-    if (currentEmployee) return true;
-    return true; // En modo demostración se ven todos
-  });
+  // Filtrar pedidos:
+  // - Si es empleado (admin/cocina/repartidor): ve TODOS los pedidos
+  // - Si es cliente: solo ve pedidos que coincidan con su último teléfono
+  //   o pedidos cuyo código coincida con la búsqueda exacta (para ver estado por código)
+  const isEmployee = currentEmployee !== null;
+  const myOrders = isEmployee
+    ? orders
+    : orders.filter((o) => {
+        // Cliente: por defecto muestra solo sus pedidos (mismo teléfono)
+        if (lastCustomerPhone && o.customerPhone === lastCustomerPhone) return true;
+        // Pero si busca por código exacto (LC-XXXX), permite ver ese pedido específico
+        if (search.trim()) {
+          const q = search.trim().toUpperCase();
+          if (o.code.toUpperCase() === q) return true;
+        }
+        return false;
+      });
 
-  const filtered = search.trim()
+  const filtered = search.trim() && isEmployee
     ? myOrders.filter((o) =>
         o.code.toLowerCase().includes(search.toLowerCase()) ||
         o.customerName.toLowerCase().includes(search.toLowerCase()) ||
@@ -49,7 +63,7 @@ export function TrackingView() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por código, nombre o teléfono..."
+              placeholder={isEmployee ? "Buscar por código, nombre o teléfono..." : "Buscar por código (ej: LC-1234)..."}
               className="bg-card border border-border rounded-full pl-10 pr-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -61,9 +75,13 @@ export function TrackingView() {
           <div className="text-center py-16 text-muted-foreground">
             <div className="text-6xl mb-3">📦</div>
             <p className="text-sm mb-3">
-              {orders.length === 0 ? 'Aún no has hecho pedidos' : 'Sin resultados'}
+              {!isEmployee && !lastCustomerPhone
+                ? 'Aún no has hecho pedidos desde este dispositivo'
+                : !isEmployee && lastCustomerPhone
+                  ? 'No hay pedidos para tu teléfono. Si buscas un pedido específico, escribe su código completo (ej: LC-1234).'
+                  : filtered.length === 0 && orders.length > 0 ? 'Sin resultados' : 'Aún no hay pedidos'}
             </p>
-            {orders.length === 0 && (
+            {!isEmployee && (
               <button
                 onClick={() => setView('menu')}
                 className="bg-primary text-primary-foreground px-5 py-2.5 rounded-full font-bold text-sm"
@@ -271,7 +289,13 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
                     )}
                   </div>
                   <span className="text-sm font-bold text-primary">
-                    {formatCUP((item.unitPrice + item.extrasTotal) * item.qty)}
+                    {item.unitPrice === 0 && item.extrasTotal === 0 ? (
+                      <span className="bg-green-700/30 text-green-400 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                        GRATIS
+                      </span>
+                    ) : (
+                      formatCUP((item.unitPrice + item.extrasTotal) * item.qty)
+                    )}
                   </span>
                 </div>
               );
@@ -339,8 +363,14 @@ function OrderDetail({ orderId, onBack }: { orderId: string; onBack: () => void 
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-green-400">
-                <span>Descuento</span>
+                <span>Descuento ({order.paymentMethod === 'transferencia' ? 'pre-recargo' : 'promoción'})</span>
                 <span>-{formatCUP(order.discount)}</span>
+              </div>
+            )}
+            {order.surcharge > 0 && (
+              <div className="flex justify-between text-yellow-400">
+                <span>Recargo transferencia (+{Math.round((order.surcharge / Math.max(1, order.subtotal + order.extras - order.discount)) * 100)}%)</span>
+                <span>+{formatCUP(order.surcharge)}</span>
               </div>
             )}
             <div className="flex justify-between font-cartoon text-base text-primary border-t border-border pt-2 mt-2">

@@ -135,7 +135,8 @@ export interface Order {
   extras: number;
   delivery: number | null;  // null = pendiente de confirmar
   discount: number;         // monto descontado por promociones
-  total: number;            // subtotal + extras + delivery - discount
+  surcharge: number;        // recargo por transferencia (30% sobre post-discount total)
+  total: number;            // subtotal + extras + delivery - discount + surcharge
   paymentMethod: PaymentMethod;
   timeSlot: TimeSlot;
   deliveryMode: DeliveryMode;
@@ -222,6 +223,9 @@ export interface AppState {
 
   // Pedidos
   orders: Order[];
+
+  // Cliente actual (para tracking): último teléfono que hizo pedido desde este dispositivo
+  lastCustomerPhone: string | null;
 
   // Empleados
   employees: Employee[];

@@ -11,6 +11,8 @@ export function HomeView() {
   const config = useStore((s) => s.config);
   const products = useStore((s) => s.products);
   const categories = useStore((s) => s.categories);
+  const ingredients = useStore((s) => s.ingredients);
+  const sizes = useStore((s) => s.sizes);
   const setView = useStore((s) => s.setView);
   const orderOpen = isAnyOrderSlotOpen(config);
 
@@ -18,7 +20,8 @@ export function HomeView() {
     .filter((p) => p.available && !p.isCombo && !p.isPizza)
     .slice(0, 6);
 
-  const pizzaProducts = products.filter((p) => p.isPizza && p.available);
+  const pizzaProducts = products.filter((p) => p.isPizza && p.available && p.id !== 'pizza_custom');
+  const minPizzaPrice = Math.min(...sizes.map((s) => s.basePrice));
 
   return (
     <div className="animate-screen-enter">
@@ -32,7 +35,7 @@ export function HomeView() {
               { ingredientId: 'salchicha', qty: 'doble' },
               { ingredientId: 'jamon', qty: 'normal' },
             ]}
-            allIngredients={[]}
+            allIngredients={ingredients}
             borderCheese={false}
             className="w-56 h-56"
           />
@@ -142,7 +145,7 @@ export function HomeView() {
                   { ingredientId: 'jamon', qty: 'normal' },
                   { ingredientId: 'pina', qty: 'normal' },
                 ]}
-                allIngredients={[]}
+                allIngredients={ingredients}
                 borderCheese
                 className="w-full h-full"
               />
@@ -192,7 +195,7 @@ export function HomeView() {
                 {p.description}
               </p>
               <span className="mt-1 inline-block text-xs font-bold text-primary">
-                Desde 800 CUP
+                Desde {minPizzaPrice.toLocaleString('es-CU')} CUP
               </span>
             </motion.button>
           ))}
