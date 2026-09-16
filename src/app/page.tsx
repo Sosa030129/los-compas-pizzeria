@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore, hydrateFromServer, refreshOrders, checkServerSession } from '@/lib/store';
-import { useEffect, useState, lazy, Suspense, useSyncExternalStore } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { ConnectionIndicator } from '@/components/connection-indicator';
 import { HomeView } from '@/components/views/home-view';
@@ -24,43 +24,6 @@ function ViewLoader() {
       <div className="animate-spin-slow text-5xl">🍕</div>
     </div>
   );
-}
-
-function HydrationGate({ children }: { children: React.ReactNode }) {
-  // Usar useSyncExternalStore para suscribirse al estado de hidratación del persist
-  const hydrated = useSyncExternalStore(
-    (callback) => {
-      const unsub = useStore.persist.onFinishHydration(callback);
-      // Si ya está hidratado, llamar al callback inmediatamente
-      if (useStore.persist.hasHydrated()) {
-        callback();
-      }
-      return unsub;
-    },
-    () => useStore.persist.hasHydrated() === true,
-    () => true, // SSR: asumir hidratado
-  );
-
-  // Timeout de seguridad
-  useEffect(() => {
-    if (!hydrated) {
-      const timeout = setTimeout(() => {
-        // Forzar re-render
-        const event = new Event('force-hydration');
-        window.dispatchEvent(event);
-      }, 1500);
-      return () => clearTimeout(timeout);
-    }
-  }, [hydrated]);
-
-  if (!hydrated) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin-slow text-5xl">🍕</div>
-      </div>
-    );
-  }
-  return <>{children}</>;
 }
 
 export default function Home() {

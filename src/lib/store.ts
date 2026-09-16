@@ -242,14 +242,21 @@ export const useStore = create<Store>()(
               deliveryMode: data.deliveryMode,
               scheduledTime: data.scheduledTime,
               notes: data.notes,
+              delivery: data.deliveryMode === 'domicilio' ? null : 0,
             }),
           });
           const result = await res.json();
           if (!result.ok) {
+            // Bug #7: NO enmascarar errores del servidor con fallback offline
             throw new Error(result.error || 'Error creando pedido');
           }
           const order = result.order as Order;
-          // Actualizar store localmente con el pedido devuelto
+          // Parsear items si vienen como string JSON desde el server
+          if (typeof order.items === 'string') {
+            order.items = JSON.parse(order.items);
+          }
+          // Convertir fechas ISO a timestamps
+          order.createdAt = typeof order.createdAt === 'string' ? new Date(order.createdAt).getTime() : order.createdAt;
           set((s) => ({
             orders: [order, ...s.orders],
             cart: [],
@@ -270,48 +277,53 @@ export const useStore = create<Store>()(
           }));
           return order;
         } catch (e: any) {
-          // Fallback: crear pedido localmente (modo offline/demo)
-          const order: Order = {
-            id: uid('order'),
-            code: shortCode(),
-            customerName: data.customerName,
-            customerPhone: data.customerPhone,
-            customerAddress: data.customerAddress,
-            reference: data.reference,
-            items: cart,
-            subtotal,
-            extras,
-            delivery: data.deliveryMode === 'domicilio' ? null : 0,
-            discount,
-            surcharge,
-            total,
-            paymentMethod: data.paymentMethod,
-            timeSlot: data.timeSlot,
-            deliveryMode: data.deliveryMode,
-            scheduledTime: data.scheduledTime,
-            state: 'recibido',
-            createdAt: Date.now(),
-            notes: data.notes,
-          };
-          set((s) => ({
-            orders: [order, ...s.orders],
-            cart: [],
-            appliedPromoCode: null,
-            lastCustomerPhone: data.customerPhone,
-            currentView: 'tracking',
-            selectedOrderId: order.id,
-            logs: capLogs([
-              {
-                id: uid('log'),
-                user: data.customerName,
-                action: 'Nuevo pedido (offline)',
-                detail: `Código ${order.code} - Total ${order.total}`,
-                date: Date.now(),
-              },
-              ...s.logs,
-            ]),
-          }));
-          return order;
+          // Bug #7: Solo fallback offline en error de RED real (no en respuesta HTTP con error)
+          if (e instanceof TypeError && e.message.includes('fetch')) {
+            // Error de red real: fallback offline
+            const order: Order = {
+              id: uid('order'),
+              code: shortCode(),
+              customerName: data.customerName,
+              customerPhone: data.customerPhone,
+              customerAddress: data.customerAddress,
+              reference: data.reference,
+              items: cart,
+              subtotal,
+              extras,
+              delivery: data.deliveryMode === 'domicilio' ? null : 0,
+              discount,
+              surcharge,
+              total,
+              paymentMethod: data.paymentMethod,
+              timeSlot: data.timeSlot,
+              deliveryMode: data.deliveryMode,
+              scheduledTime: data.scheduledTime,
+              state: 'recibido',
+              createdAt: Date.now(),
+              notes: data.notes,
+            };
+            set((s) => ({
+              orders: [order, ...s.orders],
+              cart: [],
+              appliedPromoCode: null,
+              lastCustomerPhone: data.customerPhone,
+              currentView: 'tracking',
+              selectedOrderId: order.id,
+              logs: capLogs([
+                {
+                  id: uid('log'),
+                  user: data.customerName,
+                  action: 'Nuevo pedido (offline)',
+                  detail: `Código ${order.code} - Total ${order.total}`,
+                  date: Date.now(),
+                },
+                ...s.logs,
+              ]),
+            }));
+            return order;
+          }
+          // Error del servidor (no de red): propagar al caller
+          throw e;
         }
       }) as any,
 
@@ -325,21 +337,30 @@ export const useStore = create<Store>()(
         const order = get().orders.find((o) => o.id === id);
         if (!order) return;
 
-        const patch: Partial<Order> = { state };
-        if (state === 'confirmado') patch.confirmedAt = Date.now();
-        if (state === 'entregado') patch.deliveredAt = Date.now();
+        // Guardar estado anterior para rollback (bug #8, #35)
+        const prevState = order.state;
 
-        // ===== LLAMAR A LA API (PATCH /api/orders/[id]) =====
-        // El servidor dispara WhatsApp automático según el evento
+        // ===== LLAMAR A LA API Y VERIFICAR RESPUESTA =====
         try {
-          await fetch(`/api/orders/${id}`, {
+          const res = await fetch(`/api/orders/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ state }),
           });
+          if (!res.ok) {
+            const result = await res.json().catch(() => ({}));
+            toast.error(result.error || 'Error al cambiar estado');
+            return; // No actualizar localmente si el server rechaza
+          }
         } catch (e) {
-          // Fallback: solo actualizar localmente
+          toast.error('Error de conexión al cambiar estado');
+          return; // No actualizar localmente si hay error de red
         }
+
+        // Server confirmó: actualizar localmente
+        const patch: Partial<Order> = { state };
+        if (state === 'confirmado') patch.confirmedAt = Date.now();
+        if (state === 'entregado') patch.deliveredAt = Date.now();
 
         set((s) => ({
           orders: s.orders.map((o) => (o.id === id ? { ...o, ...patch } : o)),
@@ -348,7 +369,7 @@ export const useStore = create<Store>()(
               id: uid('log'),
               user,
               action: 'Cambio de estado',
-              detail: `Pedido ${order.code}: ${state}`,
+              detail: `Pedido ${order.code}: ${prevState} → ${state}`,
               date: Date.now(),
             },
             ...s.logs,
@@ -363,17 +384,24 @@ export const useStore = create<Store>()(
         const safeDelivery = Math.max(0, Number.isFinite(delivery) ? delivery : 0);
         const newTotal = Math.max(0, order.subtotal + order.extras - order.discount + safeDelivery + order.surcharge);
 
-        // ===== LLAMAR A LA API (PATCH /api/orders/[id]) =====
+        // ===== LLAMAR A LA API Y VERIFICAR RESPUESTA =====
         try {
-          await fetch(`/api/orders/${id}`, {
+          const res = await fetch(`/api/orders/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ delivery: safeDelivery }),
           });
+          if (!res.ok) {
+            const result = await res.json().catch(() => ({}));
+            toast.error(result.error || 'Error al cambiar domicilio');
+            return;
+          }
         } catch (e) {
-          // Fallback local
+          toast.error('Error de conexión al cambiar domicilio');
+          return;
         }
 
+        // Server confirmó: actualizar localmente
         set((s) => ({
           orders: s.orders.map((o) =>
             o.id === id ? { ...o, delivery: safeDelivery, total: newTotal } : o
@@ -391,20 +419,39 @@ export const useStore = create<Store>()(
         }));
       }) as any,
 
-      assignDelivery: (orderId, employeeId) =>
-        set((s) => {
-          // Validar que el pedido esté en estado 'listo' antes de asignar
-          const order = s.orders.find((o) => o.id === orderId);
-          if (!order || order.state !== 'listo') return s;
-          // Validar que el empleado asignado sea un repartidor activo
-          const driver = s.employees.find((e) => e.id === employeeId && e.active && e.role === 'repartidor');
-          if (!driver) return s;
-          return {
-            orders: s.orders.map((o) =>
-              o.id === orderId ? { ...o, assignedDelivery: employeeId, state: 'camino' } : o
-            ),
-          };
-        }),
+      assignDelivery: (async (orderId: string, employeeId: string) => {
+        // Validar que el pedido esté en estado 'listo' antes de asignar
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order || order.state !== 'listo') {
+          toast.error('Solo se puede asignar repartidor a pedidos listos');
+          return;
+        }
+
+        // ===== LLAMAR A LA API (PATCH /api/orders/[id]) =====
+        try {
+          const res = await fetch(`/api/orders/${orderId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assignedDeliveryId: employeeId }),
+          });
+          if (!res.ok) {
+            const result = await res.json().catch(() => ({}));
+            toast.error(result.error || 'Error al asignar repartidor');
+            return;
+          }
+          toast.success('Repartidor asignado');
+        } catch (e) {
+          toast.error('Error de conexión al asignar repartidor');
+          return;
+        }
+
+        // Actualizar localmente solo si el server confirmó
+        set((s) => ({
+          orders: s.orders.map((o) =>
+            o.id === orderId ? { ...o, assignedDelivery: employeeId, state: 'camino' } : o
+          ),
+        }));
+      }) as any,
 
       // ===== Productos =====
       saveProduct: (p) =>

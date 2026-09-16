@@ -22,18 +22,15 @@ export function TrackingView() {
   // Filtrar pedidos:
   // - Si es empleado (admin/cocina/repartidor): ve TODOS los pedidos
   // - Si es cliente: solo ve pedidos que coincidan con su último teléfono
-  //   o pedidos cuyo código coincida con la búsqueda exacta (para ver estado por código)
+  //   Para buscar un pedido por código, debe ingresar también el teléfono (bug #57: PII leak)
   const isEmployee = currentEmployee !== null;
   const myOrders = isEmployee
     ? orders
     : orders.filter((o) => {
-        // Cliente: por defecto muestra solo sus pedidos (mismo teléfono)
-        if (lastCustomerPhone && o.customerPhone === lastCustomerPhone) return true;
-        // Pero si busca por código exacto (LC-XXXX), permite ver ese pedido específico
-        if (search.trim()) {
-          const q = search.trim().toUpperCase();
-          if (o.code.toUpperCase() === q) return true;
-        }
+        // Cliente: por defecto muestra solo sus pedidos (mismo teléfono normalizado)
+        const normalizedLast = lastCustomerPhone?.replace(/[\s-]/g, '') || '';
+        const normalizedOrder = o.customerPhone?.replace(/[\s-]/g, '') || '';
+        if (normalizedLast && normalizedOrder === normalizedLast) return true;
         return false;
       });
 

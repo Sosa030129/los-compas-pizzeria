@@ -21,7 +21,8 @@ export function HomeView() {
     .slice(0, 6);
 
   const pizzaProducts = products.filter((p) => p.isPizza && p.available && p.id !== 'pizza_custom');
-  const minPizzaPrice = Math.min(...sizes.map((s) => s.basePrice));
+  // Bug #27: Math.min con array vacío = Infinity. Fallback a 0.
+  const minPizzaPrice = sizes.length > 0 ? Math.min(...sizes.map((s) => s.basePrice)) : 0;
 
   return (
     <div className="animate-screen-enter">

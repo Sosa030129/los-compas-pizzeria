@@ -1,0 +1,837 @@
+     1→'use client';
+     2→
+     3→import { create } from 'zustand';
+     4→import { useShallow } from 'zustand/react/shallow';
+     5→
+     6→// Re-export useShallow for convenience
+     7→export { useShallow };
+     8→
+     9→import type {
+    10→  AppState,
+    11→  BusinessConfig,
+    12→  CartItem,
+    13→  Category,
+    14→  Employee,
+    15→  Ingredient,
+    16→  Order,
+    17→  OrderState,
+    18→  PaymentMethod,
+    19→  Product,
+    20→  Promotion,
+    21→  TimeSlot,
+    22→  View,
+    23→  WhatsAppNumber,
+    24→  ActivityLog,
+    25→  PizzaSize,
+    26→} from './types';
+    27→import {
+    28→  CATEGORIES, COMBOS, CONFIG, EMPLOYEES, INGREDIENTS, PRODUCTS, PROMOTIONS, SIZES, WHATSAPP,
+    29→} from './seed';
+    30→import { uid, shortCode } from './los-compas';
+    31→import {
+    32→  canAccessView, checkLoginRateLimit, registerFailedLogin, resetLoginAttempts,
+    33→  verifyPassword, hashPassword, isHashedPassword,
+    34→} from './auth';
+    35→
+    36→interface StoreActions {
+    37→  // UI
+    38→  setView: (v: View) => void;
+    39→  setSelectedOrder: (id: string | null) => void;
+    40→
+    41→  // Carrito
+    42→  addToCart: (item: CartItem) => void;
+    43→  updateCartItem: (id: string, patch: Partial<CartItem>) => void;
+    44→  removeFromCart: (id: string) => void;
+    45→  clearCart: () => void;
+    46→
+    47→  // Promociones (código cliente)
+    48→  setAppliedPromoCode: (code: string | null) => void;
+    49→
+    50→  // Pedidos
+    51→  placeOrder: (data: {
+    52→    customerName: string;
+    53→    customerPhone: string;
+    54→    customerAddress: string;
+    55→    reference?: string;
+    56→    paymentMethod: PaymentMethod;
+    57→    timeSlot: TimeSlot;
+    58→    deliveryMode: 'domicilio' | 'recogida';
+    59→    scheduledTime: string;
+    60→    notes?: string;
+    61→    discount?: number;
+    62→    surcharge?: number;
+    63→  }) => Order;
+    64→  updateOrder: (id: string, patch: Partial<Order>) => void;
+    65→  setOrderState: (id: string, state: OrderState) => void;
+    66→  setOrderDelivery: (id: string, delivery: number) => void;
+    67→  assignDelivery: (orderId: string, employeeId: string) => void;
+    68→
+    69→  // Productos
+    70→  saveProduct: (p: Product) => void;
+    71→  toggleProductAvailable: (id: string) => void;
+    72→  deleteProduct: (id: string) => void;
+    73→
+    74→  // Ingredientes
+    75→  saveIngredient: (i: Ingredient) => void;
+    76→  toggleIngredientAvailable: (id: string) => void;
+    77→  deleteIngredient: (id: string) => void;
+    78→
+    79→  // Categorías
+    80→  saveCategory: (c: Category) => void;
+    81→  toggleCategoryVisible: (id: string) => void;
+    82→  deleteCategory: (id: string) => void;
+    83→
+    84→  // Tamaños de pizza
+    85→  saveSize: (id: string, basePrice: number) => void;
+    86→
+    87→  // Promociones (admin)
+    88→  savePromotion: (p: Promotion) => void;
+    89→  togglePromotionActive: (id: string) => void;
+    90→  deletePromotion: (id: string) => void;
+    91→
+    92→  // Empleados
+    93→  saveEmployee: (e: Employee) => void;
+    94→  toggleEmployeeActive: (id: string) => void;
+    95→  deleteEmployee: (id: string) => void;
+    96→  loginEmployee: (username: string, password: string) => Promise<{ ok: boolean; error: string | null }>;
+    97→  logoutEmployee: () => void;
+    98→
+    99→  // WhatsApp
+   100→  saveWhatsApp: (w: WhatsAppNumber) => void;
+   101→  toggleWhatsAppActive: (id: string) => void;
+   102→  deleteWhatsApp: (id: string) => void;
+   103→
+   104→  // Configuración
+   105→  updateConfig: (patch: Partial<BusinessConfig>) => void;
+   106→
+   107→  // Logs
+   108→  addLog: (user: string, action: string, detail: string) => void;
+   109→
+   110→  // Backup / Restore
+   111→  exportData: () => string;
+   112→  importData: (json: string) => boolean;
+   113→  resetAll: () => void;
+   114→}
+   115→
+   116→type Store = AppState & StoreActions;
+   117→
+   118→const initialState: AppState = {
+   119→  categories: CATEGORIES,
+   120→  products: PRODUCTS,
+   121→  ingredients: INGREDIENTS,
+   122→  sizes: SIZES,
+   123→  combos: COMBOS,
+   124→  promotions: PROMOTIONS,
+   125→  appliedPromoCode: null,
+   126→  cart: [],
+   127→  orders: [],
+   128→  lastCustomerPhone: null,
+   129→  employees: EMPLOYEES,
+   130→  currentEmployee: null,
+   131→  whatsapp: WHATSAPP,
+   132→  config: CONFIG,
+   133→  logs: [],
+   134→  currentView: 'home',
+   135→  selectedOrderId: null,
+   136→};
+   137→
+   138→// ===== Helpers libres de efectos (computan sobre el estado, no lo mutan) =====
+   139→function computeCartCount(state: AppState): number {
+   140→  return state.cart.reduce((n, c) => n + c.qty, 0);
+   141→}
+   142→
+   143→function computeCartTotals(state: AppState): { subtotal: number; extras: number; delivery: number | null; total: number } {
+   144→  let subtotal = 0;
+   145→  let extras = 0;
+   146→  for (const item of state.cart) {
+   147→    subtotal += item.unitPrice * item.qty;
+   148→    extras += item.extrasTotal * item.qty;
+   149→  }
+   150→  const delivery =
+   151→    state.cart.length > 0 && state.cart.some((i) => !i.isCombo)
+   152→      ? null
+   153→      : 0;
+   154→  const base = subtotal + extras;
+   155→  const total = delivery === null ? base : base + delivery;
+   156→  return { subtotal, extras, delivery, total };
+   157→}
+   158→
+   159→// Cap de logs para evitar localStorage overflow (max 200)
+   160→const MAX_LOGS = 200;
+   161→function capLogs<T extends ActivityLog>(logs: T[]): T[] {
+   162→  return logs.slice(0, MAX_LOGS);
+   163→}
+   164→
+   165→export const useStore = create<Store>()(
+   166→  (set, get) => ({
+   167→    ...initialState,
+   168→
+   169→    // ===== UI =====
+   170→    setView: (v) => set({ currentView: v }),
+   171→    setSelectedOrder: (id) => set({ selectedOrderId: id }),
+   172→
+   173→      // ===== Carrito =====
+   174→      addToCart: (item) =>
+   175→        set((s) => {
+   176→          const existing = s.cart.find((c) => isSameItem(c, item));
+   177→          if (existing) {
+   178→            return {
+   179→              cart: s.cart.map((c) =>
+   180→                c.id === existing.id ? { ...c, qty: c.qty + item.qty } : c
+   181→              ),
+   182→            };
+   183→          }
+   184→          return { cart: [...s.cart, item] };
+   185→        }),
+   186→
+   187→      updateCartItem: (id, patch) =>
+   188→        set((s) => ({
+   189→          cart: s.cart.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+   190→        })),
+   191→
+   192→      removeFromCart: (id) =>
+   193→        set((s) => ({ cart: s.cart.filter((c) => c.id !== id) })),
+   194→
+   195→      clearCart: () => set({ cart: [], appliedPromoCode: null }),
+   196→
+   197→      // ===== Pedidos =====
+   198→      placeOrder: (async (data: {
+   199→        customerName: string;
+   200→        customerPhone: string;
+   201→        customerAddress: string;
+   202→        reference?: string;
+   203→        paymentMethod: PaymentMethod;
+   204→        timeSlot: TimeSlot;
+   205→        deliveryMode: 'domicilio' | 'recogida';
+   206→        scheduledTime: string;
+   207→        notes?: string;
+   208→        discount?: number;
+   209→        surcharge?: number;
+   210→      }) => {
+   211→        // Construir items del carrito para enviar al servidor
+   212→        const cart = get().cart;
+   213→        let subtotal = 0;
+   214→        let extras = 0;
+   215→        for (const item of cart) {
+   216→          subtotal += item.unitPrice * item.qty;
+   217→          extras += item.extrasTotal * item.qty;
+   218→        }
+   219→        const discount = data.discount || 0;
+   220→        const surcharge = data.surcharge || 0;
+   221→        const base = subtotal + extras;
+   222→        const total = Math.max(0, base - discount + surcharge);
+   223→
+   224→        // ===== LLAMAR A LA API (POST /api/orders) =====
+   225→        try {
+   226→          const res = await fetch('/api/orders', {
+   227→            method: 'POST',
+   228→            headers: { 'Content-Type': 'application/json' },
+   229→            body: JSON.stringify({
+   230→              customerName: data.customerName,
+   231→              customerPhone: data.customerPhone,
+   232→              customerAddress: data.customerAddress,
+   233→              reference: data.reference,
+   234→              items: cart,
+   235→              subtotal,
+   236→              extras,
+   237→              discount,
+   238→              surcharge,
+   239→              total,
+   240→              paymentMethod: data.paymentMethod,
+   241→              timeSlot: data.timeSlot,
+   242→              deliveryMode: data.deliveryMode,
+   243→              scheduledTime: data.scheduledTime,
+   244→              notes: data.notes,
+   245→            }),
+   246→          });
+   247→          const result = await res.json();
+   248→          if (!result.ok) {
+   249→            throw new Error(result.error || 'Error creando pedido');
+   250→          }
+   251→          const order = result.order as Order;
+   252→          // Actualizar store localmente con el pedido devuelto
+   253→          set((s) => ({
+   254→            orders: [order, ...s.orders],
+   255→            cart: [],
+   256→            appliedPromoCode: null,
+   257→            lastCustomerPhone: data.customerPhone,
+   258→            currentView: 'tracking',
+   259→            selectedOrderId: order.id,
+   260→            logs: capLogs([
+   261→              {
+   262→                id: uid('log'),
+   263→                user: data.customerName,
+   264→                action: 'Nuevo pedido',
+   265→                detail: `Código ${order.code} - Total ${order.total}`,
+   266→                date: Date.now(),
+   267→              },
+   268→              ...s.logs,
+   269→            ]),
+   270→          }));
+   271→          return order;
+   272→        } catch (e: any) {
+   273→          // Fallback: crear pedido localmente (modo offline/demo)
+   274→          const order: Order = {
+   275→            id: uid('order'),
+   276→            code: shortCode(),
+   277→            customerName: data.customerName,
+   278→            customerPhone: data.customerPhone,
+   279→            customerAddress: data.customerAddress,
+   280→            reference: data.reference,
+   281→            items: cart,
+   282→            subtotal,
+   283→            extras,
+   284→            delivery: data.deliveryMode === 'domicilio' ? null : 0,
+   285→            discount,
+   286→            surcharge,
+   287→            total,
+   288→            paymentMethod: data.paymentMethod,
+   289→            timeSlot: data.timeSlot,
+   290→            deliveryMode: data.deliveryMode,
+   291→            scheduledTime: data.scheduledTime,
+   292→            state: 'recibido',
+   293→            createdAt: Date.now(),
+   294→            notes: data.notes,
+   295→          };
+   296→          set((s) => ({
+   297→            orders: [order, ...s.orders],
+   298→            cart: [],
+   299→            appliedPromoCode: null,
+   300→            lastCustomerPhone: data.customerPhone,
+   301→            currentView: 'tracking',
+   302→            selectedOrderId: order.id,
+   303→            logs: capLogs([
+   304→              {
+   305→                id: uid('log'),
+   306→                user: data.customerName,
+   307→                action: 'Nuevo pedido (offline)',
+   308→                detail: `Código ${order.code} - Total ${order.total}`,
+   309→                date: Date.now(),
+   310→              },
+   311→              ...s.logs,
+   312→            ]),
+   313→          }));
+   314→          return order;
+   315→        }
+   316→      }) as any,
+   317→
+   318→      updateOrder: (id, patch) =>
+   319→        set((s) => ({
+   320→          orders: s.orders.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+   321→        })),
+   322→
+   323→      setOrderState: (async (id: string, state: OrderState) => {
+   324→        const user = get().currentEmployee?.name || 'Sistema';
+   325→        const order = get().orders.find((o) => o.id === id);
+   326→        if (!order) return;
+   327→
+   328→        const patch: Partial<Order> = { state };
+   329→        if (state === 'confirmado') patch.confirmedAt = Date.now();
+   330→        if (state === 'entregado') patch.deliveredAt = Date.now();
+   331→
+   332→        // ===== LLAMAR A LA API (PATCH /api/orders/[id]) =====
+   333→        // El servidor dispara WhatsApp automático según el evento
+   334→        try {
+   335→          await fetch(`/api/orders/${id}`, {
+   336→            method: 'PATCH',
+   337→            headers: { 'Content-Type': 'application/json' },
+   338→            body: JSON.stringify({ state }),
+   339→          });
+   340→        } catch (e) {
+   341→          // Fallback: solo actualizar localmente
+   342→        }
+   343→
+   344→        set((s) => ({
+   345→          orders: s.orders.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+   346→          logs: capLogs([
+   347→            {
+   348→              id: uid('log'),
+   349→              user,
+   350→              action: 'Cambio de estado',
+   351→              detail: `Pedido ${order.code}: ${state}`,
+   352→              date: Date.now(),
+   353→            },
+   354→            ...s.logs,
+   355→          ]),
+   356→        }));
+   357→      }) as any,
+   358→
+   359→      setOrderDelivery: (async (id: string, delivery: number) => {
+   360→        const user = get().currentEmployee?.name || 'Sistema';
+   361→        const order = get().orders.find((o) => o.id === id);
+   362→        if (!order) return;
+   363→        const safeDelivery = Math.max(0, Number.isFinite(delivery) ? delivery : 0);
+   364→        const newTotal = Math.max(0, order.subtotal + order.extras - order.discount + safeDelivery + order.surcharge);
+   365→
+   366→        // ===== LLAMAR A LA API (PATCH /api/orders/[id]) =====
+   367→        try {
+   368→          await fetch(`/api/orders/${id}`, {
+   369→            method: 'PATCH',
+   370→            headers: { 'Content-Type': 'application/json' },
+   371→            body: JSON.stringify({ delivery: safeDelivery }),
+   372→          });
+   373→        } catch (e) {
+   374→          // Fallback local
+   375→        }
+   376→
+   377→        set((s) => ({
+   378→          orders: s.orders.map((o) =>
+   379→            o.id === id ? { ...o, delivery: safeDelivery, total: newTotal } : o
+   380→          ),
+   381→          logs: capLogs([
+   382→            {
+   383→              id: uid('log'),
+   384→              user,
+   385→              action: 'Cambio de domicilio',
+   386→              detail: `Pedido ${order.code}: domicilio = ${safeDelivery} CUP`,
+   387→              date: Date.now(),
+   388→            },
+   389→            ...s.logs,
+   390→          ]),
+   391→        }));
+   392→      }) as any,
+   393→
+   394→      assignDelivery: (orderId, employeeId) =>
+   395→        set((s) => {
+   396→          // Validar que el pedido esté en estado 'listo' antes de asignar
+   397→          const order = s.orders.find((o) => o.id === orderId);
+   398→          if (!order || order.state !== 'listo') return s;
+   399→          // Validar que el empleado asignado sea un repartidor activo
+   400→          const driver = s.employees.find((e) => e.id === employeeId && e.active && e.role === 'repartidor');
+   401→          if (!driver) return s;
+   402→          return {
+   403→            orders: s.orders.map((o) =>
+   404→              o.id === orderId ? { ...o, assignedDelivery: employeeId, state: 'camino' } : o
+   405→            ),
+   406→          };
+   407→        }),
+   408→
+   409→      // ===== Productos =====
+   410→      saveProduct: (p) =>
+   411→        set((s) => {
+   412→          const exists = s.products.find((x) => x.id === p.id);
+   413→          if (exists) {
+   414→            return { products: s.products.map((x) => (x.id === p.id ? p : x)) };
+   415→          }
+   416→          return { products: [...s.products, p] };
+   417→        }),
+   418→
+   419→      toggleProductAvailable: (id) =>
+   420→        set((s) => ({
+   421→          products: s.products.map((p) =>
+   422→            p.id === id ? { ...p, available: !p.available } : p
+   423→          ),
+   424→        })),
+   425→
+   426→      deleteProduct: (id) =>
+   427→        set((s) => ({ products: s.products.filter((p) => p.id !== id) })),
+   428→
+   429→      // ===== Ingredientes =====
+   430→      saveIngredient: (i) =>
+   431→        set((s) => {
+   432→          const exists = s.ingredients.find((x) => x.id === i.id);
+   433→          if (exists) {
+   434→            return {
+   435→              ingredients: s.ingredients.map((x) => (x.id === i.id ? i : x)),
+   436→            };
+   437→          }
+   438→          return { ingredients: [...s.ingredients, i] };
+   439→        }),
+   440→
+   441→      toggleIngredientAvailable: (id) =>
+   442→        set((s) => ({
+   443→          ingredients: s.ingredients.map((i) =>
+   444→            i.id === id ? { ...i, available: !i.available } : i
+   445→          ),
+   446→        })),
+   447→
+   448→      deleteIngredient: (id) =>
+   449→        set((s) => ({ ingredients: s.ingredients.filter((i) => i.id !== id) })),
+   450→
+   451→      // ===== Categorías =====
+   452→      saveCategory: (c) =>
+   453→        set((s) => {
+   454→          const exists = s.categories.find((x) => x.id === c.id);
+   455→          if (exists) {
+   456→            return { categories: s.categories.map((x) => (x.id === c.id ? c : x)) };
+   457→          }
+   458→          return { categories: [...s.categories, c] };
+   459→        }),
+   460→
+   461→      toggleCategoryVisible: (id) =>
+   462→        set((s) => ({
+   463→          categories: s.categories.map((c) =>
+   464→            c.id === id ? { ...c, visible: !c.visible } : c
+   465→          ),
+   466→        })),
+   467→
+   468→      deleteCategory: (id) =>
+   469→        set((s) => ({ categories: s.categories.filter((c) => c.id !== id) })),
+   470→
+   471→      // ===== Tamaños de pizza =====
+   472→      saveSize: (id, basePrice) =>
+   473→        set((s) => ({
+   474→          sizes: s.sizes.map((sz) =>
+   475→            sz.id === id ? { ...sz, basePrice: Math.max(0, Math.floor(basePrice)) } : sz
+   476→          ),
+   477→        })),
+   478→
+   479→      // ===== Promociones =====
+   480→      setAppliedPromoCode: (code) => set({ appliedPromoCode: code }),
+   481→
+   482→      savePromotion: (p) =>
+   483→        set((s) => {
+   484→          const exists = s.promotions.find((x) => x.id === p.id);
+   485→          if (exists) {
+   486→            return { promotions: s.promotions.map((x) => (x.id === p.id ? p : x)) };
+   487→          }
+   488→          return { promotions: [...s.promotions, p] };
+   489→        }),
+   490→
+   491→      togglePromotionActive: (id) =>
+   492→        set((s) => ({
+   493→          promotions: s.promotions.map((p) =>
+   494→            p.id === id ? { ...p, active: !p.active } : p
+   495→          ),
+   496→        })),
+   497→
+   498→      deletePromotion: (id) =>
+   499→        set((s) => ({ promotions: s.promotions.filter((p) => p.id !== id) })),
+   500→
+   501→      // ===== Empleados =====
+   502→      saveEmployee: (e) =>
+   503→        set((s) => {
+   504→          const exists = s.employees.find((x) => x.id === e.id);
+   505→          // Prevenir degradar al admin principal (rol admin → otro rol)
+   506→          if (exists?.role === 'admin' && e.role !== 'admin') {
+   507→            return s;
+   508→          }
+   509→          // Prevenir username duplicado (case-insensitive)
+   510→          const duplicate = s.employees.find(
+   511→            (x) => x.id !== e.id && x.username.toLowerCase() === e.username.toLowerCase()
+   512→          );
+   513→          if (duplicate) return s;
+   514→
+   515→          if (exists) {
+   516→            const newEmployees = s.employees.map((x) => (x.id === e.id ? e : x));
+   517→            // Sync currentEmployee si se editó a sí mismo (evita stale)
+   518→            const newCurrent = s.currentEmployee?.id === e.id ? { ...e } : s.currentEmployee;
+   519→            return { employees: newEmployees, currentEmployee: newCurrent };
+   520→          }
+   521→          return { employees: [...s.employees, e] };
+   522→        }),
+   523→
+   524→      toggleEmployeeActive: (id) =>
+   525→        set((s) => {
+   526→          // Prevenir que el admin se desactive a sí mismo (lockout)
+   527→          if (id === s.currentEmployee?.id) return s;
+   528→          return {
+   529→            employees: s.employees.map((e) =>
+   530→              e.id === id ? { ...e, active: !e.active } : e
+   531→            ),
+   532→          };
+   533→        }),
+   534→
+   535→      deleteEmployee: (id) =>
+   536→        set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
+   537→
+   538→      loginEmployee: (async (username: string, password: string) => {
+   539→        // Rate limit local
+   540→        const rl = checkLoginRateLimit(username);
+   541→        if (!rl.allowed) {
+   542→          return { ok: false, error: `Demasiados intentos. Espera ${Math.ceil(rl.remainingMs / 1000)}s.` };
+   543→        }
+   544→
+   545→        // ===== LLAMAR A LA API (POST /api/auth/employee/login) =====
+   546→        try {
+   547→          const res = await fetch('/api/auth/employee/login', {
+   548→            method: 'POST',
+   549→            headers: { 'Content-Type': 'application/json' },
+   550→            body: JSON.stringify({ username, password }),
+   551→          });
+   552→          const result = await res.json();
+   553→          if (!result.ok) {
+   554→            registerFailedLogin(username);
+   555→            return { ok: false, error: result.error || 'Credenciales inválidas' };
+   556→          }
+   557→          // Login exitoso: el servidor ya seteó la cookie httpOnly
+   558→          resetLoginAttempts(username);
+   559→          const emp = result.employee as Employee;
+   560→          set((s) => ({
+   561→            currentEmployee: emp,
+   562→            logs: capLogs([
+   563→              {
+   564→                id: uid('log'),
+   565→                user: emp.name,
+   566→                action: 'Inicio de sesión',
+   567→                detail: `Rol: ${emp.role}`,
+   568→                date: Date.now(),
+   569→              },
+   570→              ...s.logs,
+   571→            ]),
+   572→          }));
+   573→          return { ok: true, error: null };
+   574→        } catch (e) {
+   575→          // Fallback: intentar login local (modo demo offline)
+   576→          const emp = get().employees.find(
+   577→            (e) => e.username.toLowerCase() === username.toLowerCase() && e.active
+   578→          );
+   579→          if (!emp) {
+   580→            registerFailedLogin(username);
+   581→            return { ok: false, error: 'Usuario o contraseña incorrectos' };
+   582→          }
+   583→          const passwordOk = await verifyPassword(password, emp.password);
+   584→          if (!passwordOk) {
+   585→            registerFailedLogin(username);
+   586→            return { ok: false, error: 'Usuario o contraseña incorrectos' };
+   587→          }
+   588→          resetLoginAttempts(username);
+   589→          set((s) => ({
+   590→            currentEmployee: { ...emp },
+   591→            logs: capLogs([
+   592→              {
+   593→                id: uid('log'),
+   594→                user: emp.name,
+   595→                action: 'Inicio de sesión (offline)',
+   596→                detail: `Rol: ${emp.role}`,
+   597→                date: Date.now(),
+   598→              },
+   599→              ...s.logs,
+   600→            ]),
+   601→          }));
+   602→          return { ok: true, error: null };
+   603→        }
+   604→      }) as any,
+   605→
+   606→      logoutEmployee: () => {
+   607→        const emp = get().currentEmployee;
+   608→        if (emp) {
+   609→          // ===== LLAMAR A LA API (POST /api/auth/logout) =====
+   610→          fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+   611→          set((s) => ({
+   612→            currentEmployee: null,
+   613→            currentView: 'home',
+   614→            logs: capLogs([
+   615→              {
+   616→                id: uid('log'),
+   617→                user: emp.name,
+   618→                action: 'Cierre de sesión',
+   619→                detail: '',
+   620→                date: Date.now(),
+   621→              },
+   622→              ...s.logs,
+   623→            ]),
+   624→          }));
+   625→        } else {
+   626→          set({ currentEmployee: null, currentView: 'home' });
+   627→        }
+   628→      },
+   629→
+   630→      // ===== WhatsApp =====
+   631→      saveWhatsApp: (w) =>
+   632→        set((s) => {
+   633→          const exists = s.whatsapp.find((x) => x.id === w.id);
+   634→          if (exists) {
+   635→            return { whatsapp: s.whatsapp.map((x) => (x.id === w.id ? w : x)) };
+   636→          }
+   637→          return { whatsapp: [...s.whatsapp, w] };
+   638→        }),
+   639→
+   640→      toggleWhatsAppActive: (id) =>
+   641→        set((s) => ({
+   642→          whatsapp: s.whatsapp.map((w) =>
+   643→            w.id === id ? { ...w, active: !w.active } : w
+   644→          ),
+   645→        })),
+   646→
+   647→      deleteWhatsApp: (id) =>
+   648→        set((s) => ({ whatsapp: s.whatsapp.filter((w) => w.id !== id) })),
+   649→
+   650→      // ===== Configuración =====
+   651→      updateConfig: (patch) =>
+   652→        set((s) => ({ config: { ...s.config, ...patch } })),
+   653→
+   654→      // ===== Logs =====
+   655→      addLog: (user, action, detail) =>
+   656→        set((s) => ({
+   657→          logs: capLogs([
+   658→            { id: uid('log'), user, action, detail, date: Date.now() },
+   659→            ...s.logs,
+   660→          ]),
+   661→        })),
+   662→
+   663→      // ===== Backup / Restore =====
+   664→      exportData: () => {
+   665→        const s = get();
+   666→        const data = {
+   667→          version: 2,
+   668→          exportedAt: new Date().toISOString(),
+   669→          business: s.config.name,
+   670→          categories: s.categories,
+   671→          products: s.products,
+   672→          ingredients: s.ingredients,
+   673→          sizes: s.sizes,
+   674→          combos: s.combos,
+   675→          promotions: s.promotions,
+   676→          orders: s.orders,
+   677→          employees: s.employees,
+   678→          whatsapp: s.whatsapp,
+   679→          config: s.config,
+   680→          logs: s.logs,
+   681→        };
+   682→        return JSON.stringify(data, null, 2);
+   683→      },
+   684→
+   685→      importData: (json) => {
+   686→        try {
+   687→          const data = JSON.parse(json);
+   688→          if (!data || typeof data !== 'object') return false;
+   689→          // Mergear con cuidado: solo sobreescribir si el dato es válido
+   690→          const patch: Partial<AppState> = {};
+   691→          if (Array.isArray(data.categories)) patch.categories = data.categories;
+   692→          if (Array.isArray(data.products)) patch.products = data.products;
+   693→          if (Array.isArray(data.ingredients)) patch.ingredients = data.ingredients;
+   694→          if (Array.isArray(data.sizes)) patch.sizes = data.sizes;
+   695→          if (Array.isArray(data.combos)) patch.combos = data.combos;
+   696→          if (Array.isArray(data.promotions)) patch.promotions = data.promotions;
+   697→          if (Array.isArray(data.orders)) patch.orders = data.orders;
+   698→          if (Array.isArray(data.employees)) patch.employees = data.employees;
+   699→          if (Array.isArray(data.whatsapp)) patch.whatsapp = data.whatsapp;
+   700→          if (data.config && typeof data.config === 'object') patch.config = data.config;
+   701→          if (Array.isArray(data.logs)) patch.logs = data.logs;
+   702→          set({ ...patch });
+   703→          return true;
+   704→        } catch (e) {
+   705→          return false;
+   706→        }
+   707→      },
+   708→
+   709→      // ===== Reset =====
+   710→      resetAll: () => {
+   711→        set({ ...initialState, currentView: 'home' });
+   712→      },
+   713→    })
+   714→);
+   715→
+   716→// ===== Persistencia manual del carrito (sin middleware persist para evitar SSR mismatch) =====
+   717→// Cargar carrito desde localStorage al montar
+   718→if (typeof window !== 'undefined') {
+   719→  try {
+   720→    const saved = localStorage.getItem('los-compas-cart');
+   721→    if (saved) {
+   722→      const { cart, appliedPromoCode, lastCustomerPhone } = JSON.parse(saved);
+   723→      useStore.setState({
+   724→        cart: Array.isArray(cart) ? cart : [],
+   725→        appliedPromoCode: appliedPromoCode || null,
+   726→        lastCustomerPhone: lastCustomerPhone || null,
+   727→      });
+   728→    }
+   729→  } catch {}
+   730→
+   731→  // Guardar carrito en localStorage cuando cambia
+   732→  useStore.subscribe((state) => {
+   733→    try {
+   734→      localStorage.setItem('los-compas-cart', JSON.stringify({
+   735→        cart: state.cart,
+   736→        appliedPromoCode: state.appliedPromoCode,
+   737→        lastCustomerPhone: state.lastCustomerPhone,
+   738→      }));
+   739→    } catch {}
+   740→  });
+   741→}
+   742→
+   743→// ===== Selectores recomendados para componentes =====
+   744→// Para selectores que devuelven objetos, envolver con useShallow:
+   745→//   const { subtotal, total } = useStore(useShallow(s => cartTotals(s)))
+   746→export const selectCartCount = (s: AppState & StoreActions): number =>
+   747→  computeCartCount(s);
+   748→export const selectCartTotals = (s: AppState & StoreActions) =>
+   749→  computeCartTotals(s);
+   750→
+   751→function isSameItem(a: CartItem, b: CartItem): boolean {
+   752→  if (a.productId !== b.productId) return false;
+   753→  if (a.size !== b.size) return false;
+   754→  if (a.borderCheese !== b.borderCheese) return false;
+   755→  if (a.isCombo !== b.isCombo) return false;
+   756→  const aIng = JSON.stringify(a.ingredients || []);
+   757→  const bIng = JSON.stringify(b.ingredients || []);
+   758→  if (aIng !== bIng) return false;
+   759→  if (a.notes !== b.notes) return false;
+   760→  return true;
+   761→}
+   762→
+   763→export function defaultSize(): PizzaSize {
+   764→  return 'familiar_42x30';
+   765→}
+   766→
+   767→// ===== Funciones de hidratación desde el backend =====
+   768→// Carga el catálogo (productos, categorías, ingredientes, tamaños, promociones, config, whatsapp)
+   769→// desde /api/catalog y actualiza el store. Útil al montar la app.
+   770→export async function hydrateFromServer(): Promise<boolean> {
+   771→  try {
+   772→    const res = await fetch('/api/catalog');
+   773→    if (!res.ok) return false;
+   774→    const result = await res.json();
+   775→    if (!result.ok || !result.catalog) return false;
+   776→
+   777→    const c = result.catalog;
+   778→    const patch: any = {};
+   779→    if (Array.isArray(c.categories)) patch.categories = c.categories;
+   780→    if (Array.isArray(c.products)) patch.products = c.products;
+   781→    if (Array.isArray(c.ingredients)) patch.ingredients = c.ingredients;
+   782→    if (Array.isArray(c.sizes)) patch.sizes = c.sizes;
+   783→    if (Array.isArray(c.promotions)) patch.promotions = c.promotions;
+   784→    if (Array.isArray(c.whatsappNumbers)) patch.whatsapp = c.whatsappNumbers;
+   785→    if (c.config) patch.config = c.config;
+   786→
+   787→    if (Array.isArray(c.products)) {
+   788→      patch.combos = c.products.filter((p: any) => p.isCombo);
+   789→    }
+   790→
+   791→    useStore.setState(patch);
+   792→    return true;
+   793→  } catch (e) {
+   794→    return false;
+   795→  }
+   796→}
+   797→
+   798→// Refresca la lista de pedidos desde el servidor
+   799→// (empleados ven todos, clientes ven solo los suyos - el servidor decide según la sesión)
+   800→export async function refreshOrders(): Promise<boolean> {
+   801→  try {
+   802→    const res = await fetch('/api/orders');
+   803→    if (!res.ok) return false;
+   804→    const result = await res.json();
+   805→    if (!result.ok || !Array.isArray(result.orders)) return false;
+   806→    // Parsear items JSON string en cada pedido
+   807→    const orders = result.orders.map((o: any) => ({
+   808→      ...o,
+   809→      items: typeof o.items === 'string' ? JSON.parse(o.items) : o.items,
+   810→      createdAt: typeof o.createdAt === 'string' ? new Date(o.createdAt).getTime() : o.createdAt,
+   811→      confirmedAt: o.confirmedAt ? (typeof o.confirmedAt === 'string' ? new Date(o.confirmedAt).getTime() : o.confirmedAt) : undefined,
+   812→      deliveredAt: o.deliveredAt ? (typeof o.deliveredAt === 'string' ? new Date(o.deliveredAt).getTime() : o.deliveredAt) : undefined,
+   813→      validFrom: undefined, validTo: undefined,
+   814→    }));
+   815→    useStore.setState({ orders });
+   816→    return true;
+   817→  } catch (e) {
+   818→    return false;
+   819→  }
+   820→}
+   821→
+   822→// Verifica sesión existente (cookie httpOnly) en el servidor
+   823→export async function checkServerSession(): Promise<void> {
+   824→  try {
+   825→    const res = await fetch('/api/auth/me');
+   826→    if (!res.ok) return;
+   827→    const result = await res.json();
+   828→    if (result.ok && result.session) {
+   829→      if (result.session.type === 'employee') {
+   830→        useStore.setState({ currentEmployee: result.session.employee });
+   831→      }
+   832→    }
+   833→  } catch (e) {
+   834→    // Silencioso: si falla, no hacer nada
+   835→  }
+   836→}
+   837→

@@ -1,5 +1,4 @@
-// GET /api/orders - lista pedidos (empleado: todos, cliente: solo los suyos)
-// POST /api/orders - crea nuevo pedido (desde checkout)
+// POST /api/orders - crea nuevo pedido con recálculo server-side de totales
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/server-auth';
@@ -7,10 +6,10 @@ import { notifyNewOrder } from '@/lib/whatsapp';
 import { randomBytes } from 'crypto';
 
 function generateOrderCode(): string {
-  return `LC-${randomBytes(2).toString('hex').toUpperCase().padStart(4, '0')}`;
+  // 3 bytes = 16M combinaciones (bug #16: era 2 bytes = 65k)
+  return `LC-${randomBytes(3).toString('hex').toUpperCase().substring(0, 6)}`;
 }
 
-// GET - listar pedidos
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
@@ -18,7 +17,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'No autorizado' }, { status: 401 });
     }
 
-    // Empleados ven todos los pedidos
     if (session.type === 'employee') {
       const orders = await db.order.findMany({
         orderBy: { createdAt: 'desc' },
@@ -27,7 +25,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, orders });
     }
 
-    // Clientes solo ven sus pedidos
     if (session.type === 'customer') {
       const orders = await db.order.findMany({
         where: { customerId: session.userId },
@@ -44,15 +41,14 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST - crear pedido (público, no requiere sesión)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
       customerName, customerPhone, customerAddress, reference,
-      items, subtotal, extras, delivery, discount, surcharge, total,
+      items, delivery, discount, surcharge, total,
       paymentMethod, timeSlot, deliveryMode, scheduledTime, notes,
-      customerId,
+      // customerId del body se IGNORA (bug #6: no confiar en el cliente)
     } = body;
 
     // Validaciones básicas
@@ -69,17 +65,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'El carrito está vacío' }, { status: 400 });
     }
 
-    // Generar código único (verificar unicidad)
-    let code = generateOrderCode();
-    let attempts = 0;
-    while (await db.order.findUnique({ where: { code } })) {
-      code = generateOrderCode();
-      attempts++;
-      if (attempts > 10) break;
+    // ===== RECÁLCULO SERVER-SIDE DE TOTALES (bug #5, #12, #21) =====
+    // No confiar en los totales enviados por el cliente
+    let serverSubtotal = 0;
+    let serverExtras = 0;
+    for (const item of items) {
+      const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
+      const extrasTotal = Math.max(0, Number(item.extrasTotal) || 0);
+      const qty = Math.max(1, Math.floor(Number(item.qty) || 1));
+      serverSubtotal += unitPrice * qty;
+      serverExtras += extrasTotal * qty;
     }
 
-    // Si hay sesión de cliente, asociar el pedido a la cuenta
-    let resolvedCustomerId = customerId || null;
+    // Descuento: el servidor NO revalida promociones aquí (será una mejora futura).
+    // Por seguridad, limitamos el descuento al máximo posible (base + extras).
+    const base = serverSubtotal + serverExtras;
+    const safeDiscount = Math.min(Math.max(0, Number(discount) || 0), base);
+
+    // Recargo por transferencia: calcular server-side
+    const config = await db.businessConfig.findUnique({ where: { id: '1' } });
+    const serverSurcharge = paymentMethod === 'transferencia' && config
+      ? Math.round((base - safeDiscount) * config.transferSurcharge)
+      : 0;
+
+    // Delivery: respetar lo que el cliente envía si es 0 (combo con envío gratis),
+    // si no, null = pendiente de confirmar por admin
+    const serverDelivery = deliveryMode === 'recogida'
+      ? 0
+      : (delivery === 0 ? 0 : null);
+
+    const serverTotal = Math.max(0, base - safeDiscount + serverSurcharge);
+
+    // Generar código único
+    let code = generateOrderCode();
+    for (let i = 0; i < 20; i++) {
+      const existing = await db.order.findUnique({ where: { code } }).catch(() => null);
+      if (!existing) break;
+      code = generateOrderCode();
+    }
+
+    // customerId: solo de la sesión, NUNCA del body (bug #6)
+    let resolvedCustomerId = null;
     const session = await getSession();
     if (session?.type === 'customer') {
       resolvedCustomerId = session.userId;
@@ -95,13 +121,13 @@ export async function POST(req: NextRequest) {
           ? customerAddress.trim()
           : 'Recogida en tienda',
         reference: reference?.trim() || null,
-        items: JSON.stringify(items),
-        subtotal: Math.max(0, Number(subtotal) || 0),
-        extras: Math.max(0, Number(extras) || 0),
-        delivery: deliveryMode === 'domicilio' ? null : 0,
-        discount: Math.max(0, Number(discount) || 0),
-        surcharge: Math.max(0, Number(surcharge) || 0),
-        total: Math.max(0, Number(total) || 0),
+        items: JSON.stringify(items.map(({ id, ...rest }: any) => rest)), // bug #43: quitar id interno
+        subtotal: serverSubtotal,
+        extras: serverExtras,
+        delivery: serverDelivery,
+        discount: safeDiscount,
+        surcharge: serverSurcharge,
+        total: serverTotal,
         paymentMethod,
         timeSlot,
         deliveryMode,
@@ -111,25 +137,23 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Log de actividad
     await db.activityLog.create({
       data: {
         userName: customerName.trim(),
         action: 'Nuevo pedido',
-        detail: `Código ${code} - Total ${order.total} CUP`,
+        detail: `Código ${code} - Total ${serverTotal} CUP`,
       },
     });
 
-    // ===== DISPARAR WHATSAPP AUTOMÁTICO =====
-    // Evento: nuevo pedido → notifica al admin/números de pedidos
-    await notifyNewOrder({
+    // WhatsApp: fire-and-forget (bug #19: no bloquear la respuesta)
+    notifyNewOrder({
       id: order.id,
       code: order.code,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
       total: order.total,
       scheduledTime: order.scheduledTime,
-    });
+    }).catch(() => {});
 
     return NextResponse.json({ ok: true, order });
   } catch (e: any) {

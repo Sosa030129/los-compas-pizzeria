@@ -11,9 +11,16 @@ export async function GET() {
 
     if (session.type === 'employee') {
       const { passwordHash, ...safeEmployee } = session.employee;
+      // Parsear permissions de JSON string a objeto (bug #2)
+      const empWithPerms = {
+        ...safeEmployee,
+        permissions: typeof safeEmployee.permissions === 'string'
+          ? JSON.parse(safeEmployee.permissions)
+          : safeEmployee.permissions,
+      };
       return NextResponse.json({
         ok: true,
-        session: { type: 'employee', employee: safeEmployee },
+        session: { type: 'employee', employee: empWithPerms },
       });
     }
     if (session.type === 'customer') {

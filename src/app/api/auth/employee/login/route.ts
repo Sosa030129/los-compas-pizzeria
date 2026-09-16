@@ -83,7 +83,14 @@ export async function POST(req: NextRequest) {
     });
 
     const { passwordHash, ...safeEmployee } = employee;
-    return NextResponse.json({ ok: true, employee: safeEmployee });
+    // Parsear permissions de JSON string a objeto (bug #2)
+    const employeeWithParsedPerms = {
+      ...safeEmployee,
+      permissions: typeof safeEmployee.permissions === 'string'
+        ? JSON.parse(safeEmployee.permissions)
+        : safeEmployee.permissions,
+    };
+    return NextResponse.json({ ok: true, employee: employeeWithParsedPerms });
   } catch (e: any) {
     console.error('Error en login de empleado:', e);
     return NextResponse.json(
