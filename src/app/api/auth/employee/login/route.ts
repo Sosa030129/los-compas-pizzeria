@@ -1,7 +1,7 @@
 // POST /api/auth/employee/login
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { createSession, hashPasswordServer, verifyPasswordServer } from '@/lib/server-auth';
+import { createSession, hashPasswordServer, verifyPasswordServerAsync } from '@/lib/server-auth';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 30 * 1000;
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (!employee || !verifyPasswordServer(password, employee.passwordHash)) {
+    if (!employee || !await verifyPasswordServerAsync(password, employee.passwordHash)) {
       const current = attempts.get(key) || { count: 0, lockedUntil: 0 };
       current.count += 1;
       if (current.count >= MAX_ATTEMPTS) {

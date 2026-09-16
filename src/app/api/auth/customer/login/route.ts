@@ -2,7 +2,7 @@
 // Body: { phone, password }
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { createSession, verifyPasswordServer } from '@/lib/server-auth';
+import { createSession, verifyPasswordServerAsync } from '@/lib/server-auth';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 30 * 1000;
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     const customer = await db.customer.findUnique({ where: { phone } });
 
-    if (!customer || !verifyPasswordServer(password, customer.passwordHash)) {
+    if (!customer || !await verifyPasswordServerAsync(password, customer.passwordHash)) {
       const current = attempts.get(phone) || { count: 0, lockedUntil: 0 };
       current.count += 1;
       if (current.count >= MAX_ATTEMPTS) {

@@ -17,8 +17,9 @@ const STATIC_ASSETS = [
   '/favicon.png',
 ];
 
-// Recursos Next.js estáticos que se cachean en runtime
+// Recursos Next.js estáticos y API catalog que se cachean
 const NEXTJS_STATIC_PATTERN = /\/_next\/static\//;
+const CATALOG_PATTERN = /\/api\/catalog/;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -87,6 +88,28 @@ self.addEventListener('fetch', (event) => {
           return response;
         }).catch(() => cached)
       )
+    );
+    return;
+  }
+
+  // /api/catalog: stale-while-revalidate (Bug #38: catálogo disponible offline)
+  if (CATALOG_PATTERN.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetchPromise = fetch(request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              const clone = response.clone();
+              caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone)).catch(() => {});
+            }
+            return response;
+          })
+          .catch(() => cached || new Response('{"ok":false,"error":"offline"}', {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          }));
+        return cached || fetchPromise;
+      })
     );
     return;
   }

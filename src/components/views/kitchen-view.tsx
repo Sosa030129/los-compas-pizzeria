@@ -35,11 +35,14 @@ export function KitchenView() {
   if (!currentEmployee) return null;
   if (!canAccessView(currentEmployee, 'kitchen')) return null;
 
-  const pending = orders.filter((o) => ['confirmado', 'recibido'].includes(o.state));
+  // Bug #49: Solo mostrar pedidos confirmados y preparando en "pendientes"
+  // (no permitir cocinar pedidos no confirmados por el admin)
+  const pending = orders.filter((o) => ['confirmado'].includes(o.state));
+  const unconfirmed = orders.filter((o) => o.state === 'recibido');
   const preparing = orders.filter((o) => o.state === 'preparando');
   const done = orders.filter((o) => o.state === 'listo');
 
-  const list = filter === 'pending' ? pending : filter === 'preparing' ? preparing : done;
+  const list = filter === 'pending' ? [...pending, ...unconfirmed] : filter === 'preparing' ? preparing : done;
 
   return (
     <div className="animate-screen-enter pb-24">
@@ -160,9 +163,14 @@ export function KitchenView() {
                   </div>
                 )}
 
-                {/* Acciones cocina */}
+                {/* Acciones cocina - Bug #49: solo preparar pedidos confirmados */}
                 <div className="mt-3 flex gap-2">
                   {o.state === 'recibido' && (
+                    <div className="flex-1 text-center py-2.5 text-xs text-muted-foreground bg-secondary/40 rounded-full">
+                      ⏳ Esperando confirmación del administrador
+                    </div>
+                  )}
+                  {o.state === 'confirmado' && (
                     <button
                       onClick={() => {
                         setOrderState(o.id, 'preparando');

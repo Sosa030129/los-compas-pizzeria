@@ -30,8 +30,7 @@ import {
 } from './seed';
 import { uid, shortCode } from './los-compas';
 import {
-  canAccessView, checkLoginRateLimit, registerFailedLogin, resetLoginAttempts,
-  verifyPassword, hashPassword, isHashedPassword,
+  canAccessView, isTimeRangeValid,
 } from './auth';
 
 interface StoreActions {
@@ -61,6 +60,7 @@ interface StoreActions {
     notes?: string;
     discount?: number;
     surcharge?: number;
+    extraItems?: CartItem[]; // Bug #34: free items de promociones, sin mutar el carrito
   }) => Order;
   updateOrder: (id: string, patch: Partial<Order>) => void;
   setOrderState: (id: string, state: OrderState) => void;
@@ -208,9 +208,10 @@ export const useStore = create<Store>()(
         notes?: string;
         discount?: number;
         surcharge?: number;
+        extraItems?: CartItem[];
       }) => {
-        // Construir items del carrito para enviar al servidor
-        const cart = get().cart;
+        // Bug #34: Combinar carrito + free items sin mutar el carrito real
+        const cart = [...get().cart, ...(data.extraItems || [])];
         let subtotal = 0;
         let extras = 0;
         for (const item of cart) {
@@ -637,11 +638,7 @@ export const useStore = create<Store>()(
       },
 
       loginEmployee: (async (username: string, password: string) => {
-        // Rate limit local
-        const rl = checkLoginRateLimit(username);
-        if (!rl.allowed) {
-          return { ok: false, error: `Demasiados intentos. Espera ${Math.ceil(rl.remainingMs / 1000)}s.` };
-        }
+        // Bug #22: Rate limiting solo server-side (eliminar redundancia client-side)
 
         // ===== LLAMAR A LA API (POST /api/auth/employee/login) =====
         try {
@@ -652,11 +649,10 @@ export const useStore = create<Store>()(
           });
           const result = await res.json();
           if (!result.ok) {
-            registerFailedLogin(username);
+            // El server ya hace rate limiting y devuelve 429 con mensaje claro
             return { ok: false, error: result.error || 'Credenciales inválidas' };
           }
           // Login exitoso: el servidor ya seteó la cookie httpOnly
-          resetLoginAttempts(username);
           const emp = result.employee as Employee;
           set((s) => ({
             currentEmployee: emp,
@@ -673,20 +669,14 @@ export const useStore = create<Store>()(
           }));
           return { ok: true, error: null };
         } catch (e) {
-          // Fallback: intentar login local (modo demo offline)
+          // Bug #23: Fallback offline simplificado (sin crypto.subtle)
+          // Solo comparar texto plano (los seeds usan passwords como 'admin123')
           const emp = get().employees.find(
             (e) => e.username.toLowerCase() === username.toLowerCase() && e.active
           );
-          if (!emp) {
-            registerFailedLogin(username);
+          if (!emp || emp.password !== password) {
             return { ok: false, error: 'Usuario o contraseña incorrectos' };
           }
-          const passwordOk = await verifyPassword(password, emp.password);
-          if (!passwordOk) {
-            registerFailedLogin(username);
-            return { ok: false, error: 'Usuario o contraseña incorrectos' };
-          }
-          resetLoginAttempts(username);
           set((s) => ({
             currentEmployee: { ...emp },
             logs: capLogs([

@@ -105,7 +105,10 @@ export async function destroySession(): Promise<void> {
 }
 
 // Hashing de passwords del lado servidor (PBKDF2 con crypto nativo de Node)
-import { pbkdf2Sync, randomBytes as randomBytesFn } from 'crypto';
+import { pbkdf2, pbkdf2Sync, randomBytes as randomBytesFn } from 'crypto';
+import { promisify } from 'util';
+
+const pbkdf2Async = promisify(pbkdf2);
 
 const ITERATIONS = 10000;
 const SALT_LENGTH = 16;
@@ -117,9 +120,27 @@ export function hashPasswordServer(password: string): string {
   return `pbkdf2$${ITERATIONS}$${salt.toString('base64')}$${hash.toString('base64')}`;
 }
 
+// Bug #42: Usar pbkdf2 async para no bloquear el event loop
+export async function verifyPasswordServerAsync(password: string, stored: string): Promise<boolean> {
+  if (!stored.startsWith('pbkdf2$')) {
+    return password === stored; // Legacy plain text
+  }
+  const parts = stored.split('$');
+  if (parts.length !== 4) return false;
+  const iter = parseInt(parts[1]);
+  const salt = Buffer.from(parts[2], 'base64');
+  const expectedHash = parts[3];
+  try {
+    const hash = await pbkdf2Async(password, salt, iter, KEY_LENGTH, 'sha256');
+    return hash.toString('base64') === expectedHash;
+  } catch {
+    return false;
+  }
+}
+
+// Síncrono para seed (una sola vez al iniciar)
 export function verifyPasswordServer(password: string, stored: string): boolean {
   if (!stored.startsWith('pbkdf2$')) {
-    // Legacy plain text (compatibilidad)
     return password === stored;
   }
   const parts = stored.split('$');

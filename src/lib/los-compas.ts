@@ -1,5 +1,19 @@
 // Utilidades LOS COMPAS PIZZERÍA
 
+// Bug #45: Helper compartido para cálculo de totales del carrito (DRY)
+export function calculateCartTotals(cart: any[]) {
+  let subtotal = 0;
+  let extras = 0;
+  for (const item of cart) {
+    subtotal += (item.unitPrice || 0) * (item.qty || 1);
+    extras += (item.extrasTotal || 0) * (item.qty || 1);
+  }
+  const delivery = cart.length > 0 && cart.some((i) => !i.isCombo) ? null : 0;
+  const base = subtotal + extras;
+  const total = delivery === null ? base : base + delivery;
+  return { subtotal, extras, delivery, total };
+}
+
 export function formatCUP(amount: number): string {
   const value = Math.round(amount);
   return `${value.toLocaleString('es-CU')} CUP`;

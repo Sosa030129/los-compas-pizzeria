@@ -4,7 +4,7 @@ import { useStore, useShallow } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Minus, Trash2, ShoppingBag, ChevronLeft, ArrowRight, Tag, X } from 'lucide-react';
 import {
-  formatCUP, ingredientQtyLabel, applyPromotions, findPromotionByCode,
+  formatCUP, ingredientQtyLabel, applyPromotions, findPromotionByCode, calculateCartTotals,
 } from '@/lib/los-compas';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -27,17 +27,7 @@ export function CartView() {
   const [promoInput, setPromoInput] = useState('');
   const [showCodeInput, setShowCodeInput] = useState(false);
 
-  const totals = useStore(useShallow((s) => {
-    let subtotal = 0, extras = 0;
-    for (const item of s.cart) {
-      subtotal += item.unitPrice * item.qty;
-      extras += item.extrasTotal * item.qty;
-    }
-    const delivery = s.cart.length > 0 && s.cart.some((i) => !i.isCombo) ? null : 0;
-    const base = subtotal + extras;
-    const total = delivery === null ? base : base + delivery;
-    return { subtotal, extras, delivery, total };
-  }));
+  const totals = useStore(useShallow((s) => calculateCartTotals(s.cart)));
 
   // Memoizar cálculo de promociones (bug #22)
   const promoResult = useMemo(

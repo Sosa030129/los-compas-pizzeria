@@ -5,7 +5,7 @@ import { useStore, useShallow } from '@/lib/store';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Check, CreditCard, Banknote, Clock, MapPin, User, Phone, AlertCircle, Tag, Loader2 } from 'lucide-react';
 import {
-  checkOrderTime, isAnyOrderSlotOpen, nextAvailableSlotLabel, formatCUP, applyPromotions, isValidPhone,
+  checkOrderTime, isAnyOrderSlotOpen, nextAvailableSlotLabel, formatCUP, applyPromotions, isValidPhone, calculateCartTotals,
 } from '@/lib/los-compas';
 import type { PaymentMethod, TimeSlot, DeliveryMode } from '@/lib/types';
 import { toast } from 'sonner';
@@ -19,17 +19,7 @@ export function CheckoutView() {
   const setView = useStore((s) => s.setView);
   const placeOrder = useStore((s) => s.placeOrder);
 
-  const totals = useStore(useShallow((s) => {
-    let subtotal = 0, extras = 0;
-    for (const item of s.cart) {
-      subtotal += item.unitPrice * item.qty;
-      extras += item.extrasTotal * item.qty;
-    }
-    const delivery = s.cart.length > 0 && s.cart.some((i) => !i.isCombo) ? null : 0;
-    const base = subtotal + extras;
-    const total = delivery === null ? base : base + delivery;
-    return { subtotal, extras, delivery, total };
-  }));
+  const totals = useStore(useShallow((s) => calculateCartTotals(s.cart)));
 
   // Aplicar promociones memoizado (bug #22: evita recalcular en cada render)
   const promoResult = useMemo(
@@ -81,12 +71,9 @@ export function CheckoutView() {
     setSubmitting(true);
 
     try {
-      // Agregar items gratis (productos promocionales) al carrito antes de hacer el pedido
-      if (promoResult.freeItems.length > 0) {
-        for (const fi of promoResult.freeItems) {
-          useStore.getState().addToCart(fi);
-        }
-      }
+      // Bug #34/#36: No mutar el carrito real con free items.
+      // En su lugar, el placeOrder enviará los items del carrito + los free items
+      // en el payload. El store ya incluye los items del carrito en el POST.
 
       const order = placeOrder({
         customerName: name.trim(),
@@ -100,6 +87,7 @@ export function CheckoutView() {
         notes: notes.trim(),
         discount: promoResult.totalDiscount,
         surcharge: paymentMethod === 'transferencia' ? surcharge : 0,
+        extraItems: promoResult.freeItems, // Bug #34: free items sin mutar carrito
       });
 
       // Limpiar código promocional aplicado

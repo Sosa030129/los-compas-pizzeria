@@ -315,8 +315,19 @@ function RegisterForm({ onSubmit, loading }: { onSubmit: (name: string, phone: s
         </div>
       </div>
       <button
-        onClick={() => onSubmit(name, phone, email, password)}
-        disabled={loading || !name.trim() || !phone.trim() || !password}
+        onClick={() => {
+          // Bug #31: Validación client-side antes de enviar
+          if (password.length < 4) {
+            toast.error('La contraseña debe tener al menos 4 caracteres');
+            return;
+          }
+          if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            toast.error('Email inválido');
+            return;
+          }
+          onSubmit(name, phone, email, password);
+        }}
+        disabled={loading || !name.trim() || !phone.trim() || password.length < 4}
         className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold text-sm hover:opacity-95 disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {loading ? <><Loader2 size={14} className="animate-spin" /> Creando...</> : 'Crear cuenta'}
