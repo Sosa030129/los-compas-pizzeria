@@ -137,3 +137,40 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// #6 Notificaciones Push
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: 'LOS COMPAS', body: event.data ? event.data.text() : 'Nueva notificación' };
+  }
+  const title = data.title || '🍕 LOS COMPAS';
+  const options = {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/favicon.png',
+    vibrate: [200, 100, 200],
+    data: { url: data.url || '/' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Click en notificación abre la app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      const url = event.notification.data?.url || '/';
+      for (const client of clientList) {
+        if (client.url.includes(url) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
+});

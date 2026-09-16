@@ -12,6 +12,7 @@ import { CheckoutView } from '@/components/views/checkout-view';
 import { TrackingView } from '@/components/views/tracking-view';
 import { LoginView } from '@/components/views/login-view';
 import { CustomerAccountView } from '@/components/views/customer-account-view';
+import { OnboardingWizard } from '@/components/onboarding-wizard';
 
 // Lazy load de los paneles privados (solo se cargan cuando se necesita login)
 const AdminView = lazy(() => import('@/components/views/admin-view').then(m => ({ default: m.AdminView })));
@@ -66,7 +67,8 @@ export default function Home() {
   }, [view]);
 
   return (
-    <main id="main-scroll" className="min-h-screen flex flex-col bg-paper-texture">
+    <>
+      <main id="main-scroll" className="min-h-screen flex flex-col bg-paper-texture">
       <ConnectionIndicator />
       <div className="flex-1">
         {view === 'home' && <HomeView />}
@@ -94,6 +96,8 @@ export default function Home() {
         )}
       </div>
       <BottomNav />
-    </main>
+      </main>
+      <OnboardingWizard />
+    </>
   );
 }

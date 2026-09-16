@@ -10,6 +10,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ===== 0. SUCURSALES (Multi-sucursal) =====
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  phone     String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // ===== 1. CLIENTES (cuentas opcionales) =====
 model Customer {
   id           String      @id @default(cuid())
@@ -19,6 +30,7 @@ model Customer {
   passwordHash String      // PBKDF2 hash
   addresses    String      @default("[]") // JSON array of {address, reference}
   favorites    String      @default("[]") // JSON array of productId
+  pushSubscription String? // #6 Push notifications: JSON de la suscripción Web Push
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   orders       Order[]
@@ -32,10 +44,10 @@ model Employee {
   phone        String
   username     String   @unique
   passwordHash String   // PBKDF2 hash
-  role         String   @default("personalizado") // admin | cocina | repartidor | personalizado
+  role         String   @default("personalizado")
   active       Boolean  @default(true)
-  // Permisos serializados como JSON string (SQLite no soporta arrays nativos)
-  permissions  String   @default("{}") // JSON: {ver_pedidos, crear_combos, ...}
+  permissions  String   @default("{}")
+  branchId     String?  // #5 Multi-sucursal
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   orders       Order[]  @relation("DeliveryAssignments")
@@ -110,8 +122,12 @@ model Ingredient {
   // Precios por tamaño serializados como JSON: {"pequena_20": 250, "familiar_42x30": 700}
   priceBySize String  @default("{}")
   available   Boolean @default(true)
+  stock       Int     @default(0)  // #7 Inventario: unidades disponibles
+  minStock    Int     @default(10) // alerta cuando stock < minStock
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([available])
 }
 
 // ===== 8. PROMOCIONES =====
@@ -162,6 +178,7 @@ model Order {
   // 'recibido' | 'confirmado' | 'preparando' | 'listo' | 'camino' | 'entregado' | 'cancelado'
   assignedDeliveryId String? // employee id del repartidor
   notes           String?
+  branchId        String?  // #5 Multi-sucursal
   createdAt       DateTime @default(now())
   confirmedAt     DateTime?
   deliveredAt     DateTime?

@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/server-auth';
-import { notifyNewOrder } from '@/lib/whatsapp';
+import { notifyNewOrder } from '@/lib/whatsapp-cloud';
 import { randomBytes } from 'crypto';
 
 function generateOrderCode(): string {

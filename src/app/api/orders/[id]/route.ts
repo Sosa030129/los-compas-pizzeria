@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { getSession } from '@/lib/server-auth';
 import {
   notifyOrderConfirmed, notifyOrderReady, notifyOrderDelivered,
-} from '@/lib/whatsapp';
+} from '@/lib/whatsapp-cloud';
 
 // Máquina de estados: qué transiciones son válidas desde cada estado
 const VALID_TRANSITIONS: Record<string, string[]> = {
