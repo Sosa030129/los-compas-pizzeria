@@ -1,9 +1,12 @@
 {
+  "id": "/",
   "name": "LOS COMPAS PIZZERÍA",
   "short_name": "LOS COMPAS",
   "description": "Pizzería en Sancti Spíritus, Cuba. Pide tu pizza favorita online.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "background_color": "#1a1410",
   "theme_color": "#7a1f2b",

@@ -66,6 +66,12 @@ export async function getSession(): Promise<
   }
 
   if (session.type === 'employee' && session.employee) {
+    // Bug #40: Sliding expiration - renovar sesión en cada uso
+    const newExpiry = new Date(Date.now() + SESSION_DURATION_MS);
+    await db.session.update({
+      where: { id: session.id },
+      data: { expiresAt: newExpiry },
+    }).catch(() => {});
     return {
       type: 'employee',
       userId: session.employee.id,
@@ -73,6 +79,12 @@ export async function getSession(): Promise<
     };
   }
   if (session.type === 'customer' && session.customer) {
+    // Bug #40: Sliding expiration para clientes también
+    const newExpiry = new Date(Date.now() + SESSION_DURATION_MS);
+    await db.session.update({
+      where: { id: session.id },
+      data: { expiresAt: newExpiry },
+    }).catch(() => {});
     return {
       type: 'customer',
       userId: session.customer.id,

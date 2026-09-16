@@ -43,7 +43,6 @@ model Employee {
 }
 
 // ===== 3. SESIONES (cliente y empleado) =====
-// Token aleatorio de 64 chars, almacenado en cookie httpOnly
 model Session {
   id           String   @id @default(cuid())
   token        String   @unique
@@ -57,6 +56,8 @@ model Session {
   customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([token])
+  @@index([expiresAt])  // Bug #17: índice para limpiar expiradas
+  @@index([type])
 }
 
 // ===== 4. CATEGORÍAS =====
@@ -172,6 +173,7 @@ model Order {
   @@index([state])
   @@index([customerPhone])
   @@index([createdAt])
+  @@index([assignedDeliveryId])  // Bug #17: índice para filtrar por repartidor
 }
 
 // ===== 10. NÚMEROS DE WHATSAPP =====
@@ -204,6 +206,9 @@ model WhatsAppLog {
   status    String   @default("pending") // 'pending' | 'sent' | 'failed'
   error     String?
   createdAt DateTime @default(now())
+
+  @@index([orderId])  // Bug #17: índice para consultar logs por pedido
+  @@index([createdAt])
 }
 
 // ===== 13. CONFIGURACIÓN DEL NEGOCIO (singleton) =====

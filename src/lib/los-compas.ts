@@ -150,6 +150,9 @@ export function findPromotionByCode(promotions: Promotion[], code: string, now =
 
 // Verifica si una promoción aplica a un item (según appliesTo)
 export function promotionAppliesToItem(p: Promotion, item: CartItem, products: Product[]): boolean {
+  // Bug #24: Excluir combos de promociones bundle (doble descuento no intencionado)
+  if (item.isCombo && p.type === 'bundle') return false;
+
   switch (p.appliesTo) {
     case 'all':
       return true;

@@ -5,9 +5,8 @@ const CACHE_VERSION = 'los-compas-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
-// Recursos estáticos críticos para offline
+// Recursos estáticos críticos para offline (NO incluye '/' para evitar stale - bug #37)
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/icon.svg',
   '/icon-192.png',

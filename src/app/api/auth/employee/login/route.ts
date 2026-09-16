@@ -7,6 +7,20 @@ const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 30 * 1000;
 const attempts = new Map<string, { count: number; lockedUntil: number }>();
 
+// Bug #14: Limpiar entradas expiradas cada 5 minutos para evitar memory leak
+const CLEANUP_INTERVAL = 5 * 60 * 1000;
+let lastCleanup = Date.now();
+function cleanupExpiredAttempts() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+  lastCleanup = now;
+  for (const [key, val] of attempts.entries()) {
+    if (val.lockedUntil < now && val.count === 0) {
+      attempts.delete(key);
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { username, password } = await req.json();
@@ -20,6 +34,7 @@ export async function POST(req: NextRequest) {
 
     // Rate limiting
     const key = username.toLowerCase();
+    cleanupExpiredAttempts(); // Bug #14: limpiar expirados
     const entry = attempts.get(key);
     if (entry && entry.lockedUntil > Date.now()) {
       const remaining = Math.ceil((entry.lockedUntil - Date.now()) / 1000);

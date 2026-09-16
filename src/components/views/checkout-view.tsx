@@ -230,7 +230,6 @@ export function CheckoutView() {
           <div className="space-y-2">
             <button
               onClick={() => setTimeSlot('manana')}
-              disabled={false}
               className={`w-full p-3 rounded-xl border-2 text-left transition ${
                 timeSlot === 'manana'
                   ? 'border-primary bg-primary/10'

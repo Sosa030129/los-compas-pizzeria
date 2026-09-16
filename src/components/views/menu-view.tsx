@@ -12,6 +12,11 @@ export function MenuView() {
   const products = useStore((s) => s.products);
   const categories = useStore((s) => s.categories);
   const sizes = useStore((s) => s.sizes);
+  // Bug #28: Memoizar el precio mínimo para evitar recalcular por cada pizza en cada render
+  const minPizzaPrice = useMemo(
+    () => sizes.length > 0 ? Math.min(...sizes.map((s) => s.basePrice)) : 0,
+    [sizes],
+  );
   const ingredients = useStore((s) => s.ingredients);
   const addToCart = useStore((s) => s.addToCart);
   const setView = useStore((s) => s.setView);
@@ -140,7 +145,7 @@ export function MenuView() {
                       <span className="text-sm font-bold text-primary">
                         {p.isPizza ? 'Desde ' : ''}
                         {p.isPizza
-                          ? Math.min(...sizes.map((s) => s.basePrice)).toLocaleString('es-CU')
+                          ? minPizzaPrice.toLocaleString('es-CU')
                           : p.price.toLocaleString('es-CU')}{' '}
                         CUP
                       </span>

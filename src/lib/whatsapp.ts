@@ -123,7 +123,9 @@ export async function notifyOrderConfirmed(order: {
     codigo: order.code,
     domicilio: order.delivery === null
       ? 'pendiente de confirmar'
-      : `${order.delivery.toLocaleString('es-CU')} CUP`,
+      : order.delivery === 0
+        ? 'Recogida en tienda / sin costo'
+        : `${order.delivery.toLocaleString('es-CU')} CUP`,
     total: `${order.total.toLocaleString('es-CU')} CUP`,
     horario: order.scheduledTime,
   });

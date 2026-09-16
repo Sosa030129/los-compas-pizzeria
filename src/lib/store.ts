@@ -454,133 +454,186 @@ export const useStore = create<Store>()(
       }) as any,
 
       // ===== Productos =====
-      saveProduct: (p) =>
-        set((s) => {
-          const exists = s.products.find((x) => x.id === p.id);
-          if (exists) {
-            return { products: s.products.map((x) => (x.id === p.id ? p : x)) };
-          }
-          return { products: [...s.products, p] };
-        }),
-
-      toggleProductAvailable: (id) =>
+      saveProduct: (p) => {
+        const exists = get().products.find((x) => x.id === p.id);
+        // Optimistic local update
         set((s) => ({
-          products: s.products.map((p) =>
-            p.id === id ? { ...p, available: !p.available } : p
-          ),
-        })),
+          products: exists ? s.products.map((x) => (x.id === p.id ? p : x)) : [...s.products, p],
+        }));
+        // API call (fire-and-forget with rollback on error)
+        fetch('/api/products', {
+          method: exists ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(p),
+        }).then(async (res) => {
+          if (!res.ok) {
+            const r = await res.json().catch(() => ({}));
+            toast.error(r.error || 'Error al guardar producto en el servidor');
+            hydrateFromServer(); // Rollback
+          }
+        }).catch(() => {});
+      },
 
-      deleteProduct: (id) =>
-        set((s) => ({ products: s.products.filter((p) => p.id !== id) })),
+      toggleProductAvailable: (id) => {
+        const p = get().products.find((x) => x.id === id);
+        if (!p) return;
+        set((s) => ({
+          products: s.products.map((pr) => (pr.id === id ? { ...pr, available: !pr.available } : pr)),
+        }));
+        fetch(`/api/products/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ available: !p.available }),
+        }).catch(() => {});
+      },
+
+      deleteProduct: (id) => {
+        set((s) => ({ products: s.products.filter((p) => p.id !== id) }));
+        fetch(`/api/products/${id}`, { method: 'DELETE' }).catch(() => {});
+      },
 
       // ===== Ingredientes =====
-      saveIngredient: (i) =>
-        set((s) => {
-          const exists = s.ingredients.find((x) => x.id === i.id);
-          if (exists) {
-            return {
-              ingredients: s.ingredients.map((x) => (x.id === i.id ? i : x)),
-            };
-          }
-          return { ingredients: [...s.ingredients, i] };
-        }),
-
-      toggleIngredientAvailable: (id) =>
+      saveIngredient: (i) => {
+        const exists = get().ingredients.find((x) => x.id === i.id);
         set((s) => ({
-          ingredients: s.ingredients.map((i) =>
-            i.id === id ? { ...i, available: !i.available } : i
-          ),
-        })),
+          ingredients: exists ? s.ingredients.map((x) => (x.id === i.id ? i : x)) : [...s.ingredients, i],
+        }));
+        fetch('/api/ingredients', {
+          method: exists ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(i),
+        }).then(async (res) => {
+          if (!res.ok) { toast.error('Error al guardar ingrediente'); hydrateFromServer(); }
+        }).catch(() => {});
+      },
 
-      deleteIngredient: (id) =>
-        set((s) => ({ ingredients: s.ingredients.filter((i) => i.id !== id) })),
+      toggleIngredientAvailable: (id) => {
+        const ing = get().ingredients.find((x) => x.id === id);
+        if (!ing) return;
+        set((s) => ({
+          ingredients: s.ingredients.map((i) => (i.id === id ? { ...i, available: !i.available } : i)),
+        }));
+        fetch(`/api/ingredients/${id}`, { method: 'PATCH' }).catch(() => {});
+      },
+
+      deleteIngredient: (id) => {
+        set((s) => ({ ingredients: s.ingredients.filter((i) => i.id !== id) }));
+        fetch(`/api/ingredients/${id}`, { method: 'DELETE' }).catch(() => {});
+      },
 
       // ===== Categorías =====
-      saveCategory: (c) =>
-        set((s) => {
-          const exists = s.categories.find((x) => x.id === c.id);
-          if (exists) {
-            return { categories: s.categories.map((x) => (x.id === c.id ? c : x)) };
-          }
-          return { categories: [...s.categories, c] };
-        }),
-
-      toggleCategoryVisible: (id) =>
+      saveCategory: (c) => {
+        const exists = get().categories.find((x) => x.id === c.id);
         set((s) => ({
-          categories: s.categories.map((c) =>
-            c.id === id ? { ...c, visible: !c.visible } : c
-          ),
-        })),
+          categories: exists ? s.categories.map((x) => (x.id === c.id ? c : x)) : [...s.categories, c],
+        }));
+        fetch('/api/categories', {
+          method: exists ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(c),
+        }).catch(() => {});
+      },
 
-      deleteCategory: (id) =>
-        set((s) => ({ categories: s.categories.filter((c) => c.id !== id) })),
+      toggleCategoryVisible: (id) => {
+        const cat = get().categories.find((x) => x.id === id);
+        if (!cat) return;
+        set((s) => ({
+          categories: s.categories.map((c) => (c.id === id ? { ...c, visible: !c.visible } : c)),
+        }));
+        fetch(`/api/categories/${id}`, { method: 'PATCH' }).catch(() => {});
+      },
+
+      deleteCategory: (id) => {
+        set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }));
+        fetch(`/api/categories/${id}`, { method: 'DELETE' }).catch(() => {});
+      },
 
       // ===== Tamaños de pizza =====
-      saveSize: (id, basePrice) =>
+      saveSize: (id, basePrice) => {
         set((s) => ({
           sizes: s.sizes.map((sz) =>
             sz.id === id ? { ...sz, basePrice: Math.max(0, Math.floor(basePrice)) } : sz
           ),
-        })),
+        }));
+        fetch('/api/sizes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, basePrice }),
+        }).catch(() => {});
+      },
 
       // ===== Promociones =====
       setAppliedPromoCode: (code) => set({ appliedPromoCode: code }),
 
-      savePromotion: (p) =>
-        set((s) => {
-          const exists = s.promotions.find((x) => x.id === p.id);
-          if (exists) {
-            return { promotions: s.promotions.map((x) => (x.id === p.id ? p : x)) };
-          }
-          return { promotions: [...s.promotions, p] };
-        }),
-
-      togglePromotionActive: (id) =>
+      savePromotion: (p) => {
+        const exists = get().promotions.find((x) => x.id === p.id);
         set((s) => ({
-          promotions: s.promotions.map((p) =>
-            p.id === id ? { ...p, active: !p.active } : p
-          ),
-        })),
+          promotions: exists ? s.promotions.map((x) => (x.id === p.id ? p : x)) : [...s.promotions, p],
+        }));
+        fetch('/api/promotions', {
+          method: exists ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(p),
+        }).catch(() => {});
+      },
 
-      deletePromotion: (id) =>
-        set((s) => ({ promotions: s.promotions.filter((p) => p.id !== id) })),
+      togglePromotionActive: (id) => {
+        const promo = get().promotions.find((x) => x.id === id);
+        if (!promo) return;
+        set((s) => ({
+          promotions: s.promotions.map((p) => (p.id === id ? { ...p, active: !p.active } : p)),
+        }));
+        fetch(`/api/promotions/${id}`, { method: 'PATCH' }).catch(() => {});
+      },
+
+      deletePromotion: (id) => {
+        set((s) => ({ promotions: s.promotions.filter((p) => p.id !== id) }));
+        fetch(`/api/promotions/${id}`, { method: 'DELETE' }).catch(() => {});
+      },
 
       // ===== Empleados =====
-      saveEmployee: (e) =>
+      saveEmployee: (e) => {
+        const exists = get().employees.find((x) => x.id === e.id);
+        if (exists?.role === 'admin' && e.role !== 'admin') {
+          toast.error('No se puede degradar al administrador principal');
+          return;
+        }
         set((s) => {
-          const exists = s.employees.find((x) => x.id === e.id);
-          // Prevenir degradar al admin principal (rol admin → otro rol)
-          if (exists?.role === 'admin' && e.role !== 'admin') {
-            return s;
-          }
-          // Prevenir username duplicado (case-insensitive)
-          const duplicate = s.employees.find(
-            (x) => x.id !== e.id && x.username.toLowerCase() === e.username.toLowerCase()
-          );
-          if (duplicate) return s;
+          const newEmployees = exists ? s.employees.map((x) => (x.id === e.id ? e : x)) : [...s.employees, e];
+          const newCurrent = s.currentEmployee?.id === e.id ? { ...e } : s.currentEmployee;
+          return { employees: newEmployees, currentEmployee: newCurrent };
+        });
+        fetch('/api/employees', {
+          method: exists ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(e),
+        }).catch(() => {});
+      },
 
-          if (exists) {
-            const newEmployees = s.employees.map((x) => (x.id === e.id ? e : x));
-            // Sync currentEmployee si se editó a sí mismo (evita stale)
-            const newCurrent = s.currentEmployee?.id === e.id ? { ...e } : s.currentEmployee;
-            return { employees: newEmployees, currentEmployee: newCurrent };
-          }
-          return { employees: [...s.employees, e] };
-        }),
+      toggleEmployeeActive: (id) => {
+        if (id === get().currentEmployee?.id) {
+          toast.error('No puedes desactivarte a ti mismo');
+          return;
+        }
+        const emp = get().employees.find((x) => x.id === id);
+        if (!emp) return;
+        set((s) => ({
+          employees: s.employees.map((e) => (e.id === id ? { ...e, active: !e.active } : e)),
+        }));
+        fetch(`/api/employees/${id}`, { method: 'PATCH' }).catch(() => {});
+      },
 
-      toggleEmployeeActive: (id) =>
-        set((s) => {
-          // Prevenir que el admin se desactive a sí mismo (lockout)
-          if (id === s.currentEmployee?.id) return s;
-          return {
-            employees: s.employees.map((e) =>
-              e.id === id ? { ...e, active: !e.active } : e
-            ),
-          };
-        }),
-
-      deleteEmployee: (id) =>
-        set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
+      deleteEmployee: (id) => {
+        set((s) => ({ employees: s.employees.filter((e) => e.id !== id) }));
+        fetch(`/api/employees/${id}`, { method: 'DELETE' })
+          .then(async (res) => {
+            if (!res.ok) {
+              const r = await res.json().catch(() => ({}));
+              toast.error(r.error || 'Error al eliminar');
+              hydrateFromServer();
+            }
+          }).catch(() => {});
+      },
 
       loginEmployee: (async (username: string, password: string) => {
         // Rate limit local
@@ -675,28 +728,41 @@ export const useStore = create<Store>()(
       },
 
       // ===== WhatsApp =====
-      saveWhatsApp: (w) =>
-        set((s) => {
-          const exists = s.whatsapp.find((x) => x.id === w.id);
-          if (exists) {
-            return { whatsapp: s.whatsapp.map((x) => (x.id === w.id ? w : x)) };
-          }
-          return { whatsapp: [...s.whatsapp, w] };
-        }),
-
-      toggleWhatsAppActive: (id) =>
+      saveWhatsApp: (w) => {
+        const exists = get().whatsapp.find((x) => x.id === w.id);
         set((s) => ({
-          whatsapp: s.whatsapp.map((w) =>
-            w.id === id ? { ...w, active: !w.active } : w
-          ),
-        })),
+          whatsapp: exists ? s.whatsapp.map((x) => (x.id === w.id ? w : x)) : [...s.whatsapp, w],
+        }));
+        fetch('/api/whatsapp-numbers', {
+          method: exists ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(w),
+        }).catch(() => {});
+      },
 
-      deleteWhatsApp: (id) =>
-        set((s) => ({ whatsapp: s.whatsapp.filter((w) => w.id !== id) })),
+      toggleWhatsAppActive: (id) => {
+        const wa = get().whatsapp.find((x) => x.id === id);
+        if (!wa) return;
+        set((s) => ({
+          whatsapp: s.whatsapp.map((w) => (w.id === id ? { ...w, active: !w.active } : w)),
+        }));
+        fetch(`/api/whatsapp-numbers/${id}`, { method: 'PATCH' }).catch(() => {});
+      },
+
+      deleteWhatsApp: (id) => {
+        set((s) => ({ whatsapp: s.whatsapp.filter((w) => w.id !== id) }));
+        fetch(`/api/whatsapp-numbers/${id}`, { method: 'DELETE' }).catch(() => {});
+      },
 
       // ===== Configuración =====
-      updateConfig: (patch) =>
-        set((s) => ({ config: { ...s.config, ...patch } })),
+      updateConfig: (patch) => {
+        set((s) => ({ config: { ...s.config, ...patch } }));
+        fetch('/api/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        }).catch(() => {});
+      },
 
       // ===== Logs =====
       addLog: (user, action, detail) =>

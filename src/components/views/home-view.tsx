@@ -52,6 +52,7 @@ export function HomeView() {
             <img
               src={config.logo}
               alt="LOS COMPAS PIZZERÍA"
+              onError={(e) => { e.currentTarget.src = '/logo.png'; }}
               className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-2 border-primary/40 shadow-2xl shadow-primary/20"
             />
           </motion.div>
