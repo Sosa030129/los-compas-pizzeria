@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
+import { toast } from 'sonner';
 
 // Re-export useShallow for convenience
 export { useShallow };
