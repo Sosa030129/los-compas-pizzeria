@@ -7,7 +7,7 @@ echo "🔥 Build para Render.com..."
 sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
 echo "✅ Provider cambiado a postgresql"
 
-# Instalar TODAS las dependencias (incluidas dev)
+# Instalar TODAS las dependencias
 npm install --include=dev
 
 # Generar cliente Prisma
@@ -16,21 +16,62 @@ npx prisma generate
 # Crear tablas en PostgreSQL
 npx prisma db push --accept-data-loss
 
-# Ejecutar seed (convertir TS a JS primero si es necesario)
-npx tsx scripts/seed-backend.ts 2>/dev/null || node -e "
-const { db } = require('./src/lib/db');
-const { hashPasswordServer } = require('./src/lib/server-auth');
+# Ejecutar seed
+node -e "
+const { PrismaClient } = require('@prisma/client');
+const crypto = require('crypto');
+const { promisify } = require('util');
+const pbkdf2 = promisify(crypto.pbkdf2);
+
+async function hash(pwd) {
+  const salt = crypto.randomBytes(16);
+  const hash = await pbkdf2(pwd, salt, 10000, 32, 'sha256');
+  return 'pbkdf2\$10000\$' + salt.toString('base64') + '\$' + hash.toString('base64');
+}
+
 (async () => {
+  const db = new PrismaClient();
   try {
-    // Limpiar
-    await db.\$executeRaw\`TRUNCATE \"Customer\", \"Employee\", \"Session\", \"Category\", \"Product\", \"SizeOption\", \"Ingredient\", \"Promotion\", \"Order\", \"WhatsAppNumber\", \"WhatsAppTemplate\", \"WhatsAppLog\", \"BusinessConfig\", \"ActivityLog\", \"Branch\" CASCADE\`;
-  } catch(e) {}
-  console.log('Seed: configuración básica cargada');
+    // Config
+    await db.businessConfig.upsert({ where: {id:'1'}, update: {}, create: { id:'1', name:'LOS COMPAS', city:'Sancti Spíritus, Cuba', currency:'CUP', logo:'/logo.png', phone:'+53 55000000', address:'Sancti Spíritus, Cuba', deliveryBase:250, morningStart:'08:00', morningEnd:'10:30', morningDelivery:'12:30 PM - 01:00 PM', afternoonStart:'13:00', afternoonEnd:'16:30', afternoonDelivery:'06:30 PM - 07:00 PM', transferSurcharge:0.30 } });
+    // Categorías
+    for (const c of [['pizzas','Pizzas','🍕',1],['comidas','Comidas','🌮',2],['postres','Postres','🍩',3],['bebidas','Bebidas','🥤',4],['combos','Combos','🎉',5]]) {
+      await db.category.upsert({ where: {id:c[0]}, update: {}, create: { id:c[0], name:c[1], emoji:c[2], visible:true, order:c[3] } });
+    }
+    // Tamaños
+    const sizes = [['pequena_20','Pequeña 20cm',800,1],['mediana_25','Mediana 25cm',1200,2],['grande_30','Grande 30cm',1600,3],['rect_30x20','Rect. Pequeña 30×20cm',1400,4],['rect_35x40','Rect. Mediana 35×40cm',2000,5],['familiar_42x30','Familiar 42×30cm',2200,6],['extra_46x36','Extra Familiar 46×36cm',2600,7]];
+    for (const s of sizes) { await db.sizeOption.upsert({ where: {sizeId:s[0]}, update: {basePrice:s[2]}, create: { sizeId:s[0], label:s[1], basePrice:s[2], order:s[3] } }); }
+    // Empleados
+    const adminPerms = JSON.stringify({ver_pedidos:true,crear_combos:true,cambiar_estados:true,cambiar_precios:true,gestionar_productos:true,gestionar_empleados:true,gestionar_domicilio:true,ver_dashboard:true});
+    await db.employee.upsert({ where: {id:'emp_admin'}, update: {passwordHash: await hash('admin123')}, create: { id:'emp_admin', name:'Administrador', phone:'+53 55000000', username:'admin', passwordHash: await hash('admin123'), role:'admin', permissions:adminPerms } });
+    await db.employee.upsert({ where: {id:'emp_cocina'}, update: {passwordHash: await hash('cocina123')}, create: { id:'emp_cocina', name:'Chef Cocina', phone:'+53 55000001', username:'cocina', passwordHash: await hash('cocina123'), role:'cocina', permissions:JSON.stringify({ver_pedidos:true,crear_combos:true,cambiar_estados:true,cambiar_precios:false,gestionar_productos:false,gestionar_empleados:false,gestionar_domicilio:false,ver_dashboard:false}) } });
+    await db.employee.upsert({ where: {id:'emp_reparto'}, update: {passwordHash: await hash('reparto123')}, create: { id:'emp_reparto', name:'Repartidor Juan', phone:'+53 55000002', username:'reparto', passwordHash: await hash('reparto123'), role:'repartidor', permissions:JSON.stringify({ver_pedidos:true,crear_combos:false,cambiar_estados:true,cambiar_precios:false,gestionar_productos:false,gestionar_empleados:false,gestionar_domicilio:false,ver_dashboard:false}) } });
+    // WhatsApp
+    for (const w of [['+53 55000000','WhatsApp Principal','pedidos'],['+53 55000001','Cocina','cocina'],['+53 55000002','Reparto','reparto']]) {
+      const existing = await db.whatsAppNumber.findFirst({ where: { number: w[0] } });
+      if (!existing) await db.whatsAppNumber.create({ data: { number:w[0], name:w[1], function:w[2], active:true } });
+    }
+    // Plantillas WhatsApp
+    for (const t of [['nuevo_pedido','🆕 *Nuevo pedido*\\n\\nCliente: {cliente}\\nCódigo: {codigo}\\nTotal: {total}\\nHorario: {horario}'],['pedido_confirmado','✅ *Pedido confirmado*\\n\\nHola {cliente}, confirmamos tu pedido {codigo}.\\nDomicilio: {domicilio}\\nTotal: {total}\\nEntrega: {horario}'],['pedido_listo','📦 *Tu pedido está listo*\\n\\nHola {cliente}, tu pedido {codigo} ya está listo.'],['pedido_entregado','🎉 *Pedido entregado*\\n\\nHola {cliente}, tu pedido {codigo} fue entregado. ¡Gracias por comprar en LOS COMPAS!']]) {
+      const existing = await db.whatsAppTemplate.findUnique({ where: { event: t[0] } });
+      if (!existing) await db.whatsAppTemplate.create({ data: { event:t[0], template:t[1], active:true } });
+    }
+    console.log('✅ Seed completado');
+  } catch(e) { console.log('Seed:', e.message); }
   await db.\$disconnect();
 })();
-" 2>/dev/null || echo "Seed omitido"
+" 2>&1 || echo "Seed omitido"
 
 # Construir Next.js
 npm run build
 
-echo "✅ Build completado!"
+# Copiar cliente Prisma al output standalone (FIX: 502 error)
+mkdir -p .next/standalone/node_modules/@prisma
+cp -r node_modules/@prisma/client .next/standalone/node_modules/@prisma/client 2>/dev/null || true
+mkdir -p .next/standalone/node_modules/.prisma
+cp -r node_modules/.prisma/client .next/standalone/node_modules/.prisma/client 2>/dev/null || true
+
+# Copiar prisma schema al standalone
+cp -r prisma .next/standalone/prisma 2>/dev/null || true
+
+echo "✅ Build completado con Prisma client incluido!"
