@@ -2,12 +2,16 @@
 
 import { useStore, useShallow } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Trash2, ShoppingBag, ChevronLeft, ArrowRight, Tag, X } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingBag, ChevronLeft, ArrowRight, Tag, X, Pencil } from 'lucide-react';
 import {
-  formatCUP, ingredientQtyLabel, applyPromotions, findPromotionByCode, calculateCartTotals,
+  formatCUP, ingredientQtyLabel, ingredientQtyMultiplier, applyPromotions, findPromotionByCode, calculateCartTotals,
 } from '@/lib/los-compas';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
+import type { CartItem, CartItemIngredient, IngredientQty } from '@/lib/types';
+
+const QTY_OPTIONS: IngredientQty[] = ['normal', 'doble', 'triple'];
+const BASE_INCLUDED = new Set(['queso']);
 
 export function CartView() {
   const cart = useStore((s) => s.cart);
@@ -26,6 +30,8 @@ export function CartView() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [showCodeInput, setShowCodeInput] = useState(false);
+  const [editItem, setEditItem] = useState<CartItem | null>(null);
+  const [editIngs, setEditIngs] = useState<CartItemIngredient[]>([]);
 
   const totals = useStore(useShallow((s) => calculateCartTotals(s.cart)));
 
@@ -107,16 +113,30 @@ export function CartView() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-cartoon text-sm leading-tight">{item.name}</h3>
-                    <button
-                      onClick={() => {
-                        removeFromCart(item.id);
-                        toast(`Eliminado: ${item.name}`);
-                      }}
-                      className="text-destructive hover:bg-destructive/10 w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex gap-1 shrink-0">
+                      {item.size && (
+                        <button
+                          onClick={() => {
+                            setEditItem(item);
+                            setEditIngs(item.ingredients ? [...item.ingredients] : []);
+                          }}
+                          className="text-primary hover:bg-primary/10 w-7 h-7 rounded-full flex items-center justify-center"
+                          aria-label="Editar"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          removeFromCart(item.id);
+                          toast(`Eliminado: ${item.name}`);
+                        }}
+                        className="text-destructive hover:bg-destructive/10 w-7 h-7 rounded-full flex items-center justify-center"
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                   {size && (
                     <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -385,6 +405,106 @@ export function CartView() {
                   Vaciar
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de editar ingredientes */}
+      <AnimatePresence>
+        {editItem && editItem.size && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setEditItem(null)}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+            <motion.div
+              initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+              transition={{ type: 'spring', damping: 24 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-border max-h-[85vh] overflow-y-auto">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl">{editItem.emoji}</span>
+                  <div>
+                    <h3 className="font-cartoon text-base">Editar {editItem.name}</h3>
+                    <p className="text-xs text-muted-foreground">{sizes.find((s) => s.id === editItem.size)?.label}</p>
+                  </div>
+                </div>
+                <button onClick={() => setEditItem(null)} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center"><X size={16} /></button>
+              </div>
+
+              <p className="text-xs font-bold text-muted-foreground mb-2">Ingredientes (agrega o quita):</p>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto mb-3">
+                {ingredients.filter((i) => i.available).map((ing) => {
+                  const ci = editIngs.find((s) => s.ingredientId === ing.id);
+                  const qty = ci?.qty;
+                  const price = ing.priceBySize[editItem.size!] || 0;
+                  const mult = qty ? ingredientQtyMultiplier(qty) : 0;
+                  const freePortions = BASE_INCLUDED.has(ing.id) ? 1 : 0;
+                  const charge = Math.max(0, mult - freePortions) * price;
+                  return (
+                    <div key={ing.id} className={`flex items-center gap-2 p-2 rounded-lg border ${qty ? 'border-primary bg-primary/10' : 'border-border'}`}>
+                      <span className="text-xl">{ing.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold leading-tight">{ing.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {charge > 0 ? `+${charge.toLocaleString('es-CU')} CUP` : (qty ? 'Incluido' : `+${price.toLocaleString('es-CU')} CUP`)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {qty ? (
+                          <div className="flex items-center gap-1 bg-secondary rounded-full p-0.5">
+                            {QTY_OPTIONS.map((q) => (
+                              <button key={q} onClick={() => {
+                                if (q === qty) setEditIngs((prev) => prev.filter((p) => p.ingredientId !== ing.id));
+                                else setEditIngs((prev) => {
+                                  const ex = prev.find((p) => p.ingredientId === ing.id);
+                                  if (ex) return prev.map((p) => p.ingredientId === ing.id ? { ...p, qty: q } : p);
+                                  return [...prev, { ingredientId: ing.id, qty: q }];
+                                });
+                              }} className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${qty === q ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>
+                                {q === 'normal' ? 'N' : q === 'doble' ? 'D' : 'T'}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <button onClick={() => setEditIngs((prev) => [...prev, { ingredientId: ing.id, qty: 'normal' }])}
+                            className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center animate-button-pop">
+                            <Plus size={14} strokeWidth={3} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(() => {
+                const newExtras = editIngs.reduce((sum, ci) => {
+                  const ing = ingredients.find((i) => i.id === ci.ingredientId);
+                  if (!ing) return sum;
+                  const price = ing.priceBySize[editItem.size!] || 0;
+                  const mult = ingredientQtyMultiplier(ci.qty);
+                  const freePortions = BASE_INCLUDED.has(ci.ingredientId) ? 1 : 0;
+                  return sum + price * Math.max(0, mult - freePortions);
+                }, 0);
+                const newTotal = editItem.unitPrice + newExtras;
+                return (
+                  <>
+                    <div className="bg-secondary/40 rounded-xl p-2 mb-3 flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">Nuevo total</span>
+                      <span className="font-cartoon text-base text-primary">{formatCUP(newTotal)}</span>
+                    </div>
+                    <button onClick={() => {
+                      updateCartItem(editItem.id, { ingredients: editIngs, extrasTotal: newExtras });
+                      toast.success('Cambios guardados');
+                      setEditItem(null);
+                    }} className="w-full bg-primary text-primary-foreground py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop">
+                      Guardar cambios
+                    </button>
+                  </>
+                );
+              })()}
             </motion.div>
           </motion.div>
         )}
