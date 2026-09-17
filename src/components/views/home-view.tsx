@@ -77,12 +77,6 @@ export function HomeView() {
               >
                 Ver Menú
               </button>
-              <button
-                onClick={() => setView('builder')}
-                className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-full font-bold text-sm hover:bg-secondary/70 transition border border-border"
-              >
-                <Pizza size={16} className="inline mr-1.5 -mt-0.5" /> Armar mi pizza
-              </button>
             </div>
 
             <div className="mt-5 flex flex-wrap gap-3 text-xs text-muted-foreground justify-center sm:justify-start">
@@ -153,15 +147,15 @@ export function HomeView() {
               />
             </motion.div>
             <div className="flex-1">
-              <h3 className="font-cartoon text-lg text-foreground">Arma tu pizza</h3>
+              <h3 className="font-cartoon text-lg text-foreground">Nuestras pizzas</h3>
               <p className="text-xs text-muted-foreground mt-1 mb-2">
-                Elige tamaño, borde de queso, ingredientes extra. ¡Tú mandas!
+                Elige entre pizzas predeterminadas o crea la tuya desde el menú
               </p>
               <button
-                onClick={() => setView('builder')}
+                onClick={() => setView('menu')}
                 className="bg-primary text-primary-foreground px-4 py-2 rounded-full font-bold text-xs animate-button-pop"
               >
-                Probar ahora
+                Ver pizzas
               </button>
             </div>
           </div>
