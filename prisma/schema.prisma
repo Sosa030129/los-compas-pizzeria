@@ -1,12 +1,13 @@
 // LOS COMPAS PIZZERÍA - Prisma schema completo
-// 14 tablas del negocio (sección 52 del prompt maestro)
+// 15 tablas del negocio (sección 52 del prompt maestro)
+// Compatible con SQLite (desarrollo) y PostgreSQL (producción en Render)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = env("DATABASE_PROVIDER") ?? "sqlite"
   url      = env("DATABASE_URL")
 }
 

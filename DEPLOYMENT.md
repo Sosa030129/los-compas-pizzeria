@@ -1,66 +1,86 @@
-# 🍕 LOS COMPAS PIZZERÍA PWA — Guía de Despliegue
+# 🍕 LOS COMPAS PIZZERÍA PWA — Guía de Despliegue en Render.com
 
-## Despliegue gratuito en Vercel
+## Despliegue gratuito en Render (sin teléfono)
 
-### Paso 1: Preparar el repositorio
-```bash
-git init
-git add .
-git commit -m "LOS COMPAS Pizzería PWA lista para producción"
-```
-
-### Paso 2: Subir a GitHub
-1. Crea una cuenta en github.com (gratis)
+### Paso 1: Subir el código a GitHub
+1. Crea cuenta en **github.com** (gratis, solo email)
 2. Crea un repositorio nuevo: `los-compas-pizzeria`
 3. Sube el código:
 ```bash
+git init
+git add .
+git commit -m "LOS COMPAS PIZZERÍA PWA"
 git remote add origin https://github.com/TU_USUARIO/los-compas-pizzeria.git
 git push -u origin main
 ```
 
-### Paso 3: Desplegar en Vercel
-1. Ve a vercel.com y crea una cuenta (gratis con GitHub)
-2. Click en "New Project"
-3. Importa el repositorio `los-compas-pizzeria`
-4. Vercel detecta Next.js automáticamente
-5. Configura las variables de entorno:
-   - `DATABASE_URL` = `file:./db/prod.db` (SQLite en Vercel)
-   - `WHATSAPP_TOKEN` = tu token de Meta Business (opcional)
-   - `WHATSAPP_PHONE_NUMBER_ID` = tu ID de teléfono de Meta (opcional)
-6. Click en "Deploy"
-7. Vercel te da una URL como: `los-compas-pizzeria.vercel.app`
+### Paso 2: Crear cuenta en Render
+1. Ve a **render.com** → "Get Started"
+2. Inicia sesión con **GitHub** o **Google** (NO pide teléfono)
+3. ¡Listo! Ya tienes cuenta
 
-### Paso 4: Configurar dominio propio (opcional)
-1. En Vercel → Settings → Domains
+### Paso 3: Desplegar (2 formas)
+
+#### Opción A: Automática con render.yaml (recomendada)
+1. En Render → "New" → "Blueprint"
+2. Selecciona tu repositorio de GitHub
+3. Render detecta `render.yaml` automáticamente
+4. Crea:
+   - Base de datos PostgreSQL gratis
+   - Web service con Next.js
+5. Click "Apply" → Render hace todo automáticamente
+
+#### Opción B: Manual paso a paso
+1. **Crear base de datos**:
+   - Render → "New" → "PostgreSQL"
+   - Name: `los-compas-db`
+   - Plan: Free
+   - Click "Create"
+   - Copia la "Internal Database URL"
+
+2. **Crear web service**:
+   - Render → "New" → "Web Service"
+   - Conecta tu repo de GitHub
+   - Name: `los-compas-pizzeria`
+   - Runtime: Node
+   - Build Command: `bun install && bun run db:generate && bun scripts/seed-backend.ts`
+   - Start Command: `bun run start`
+   - Plan: Free
+
+3. **Configurar variables de entorno**:
+   En Render → Environment:
+   - `DATABASE_PROVIDER` = `postgresql`
+   - `DATABASE_URL` = (pega la URL de PostgreSQL del paso 1)
+   - `NODE_ENV` = `production`
+   - `WHATSAPP_TOKEN` = (tu token de Meta, opcional)
+   - `WHATSAPP_PHONE_NUMBER_ID` = (tu ID de Meta, opcional)
+
+4. Click "Create Web Service"
+5. ¡Listo! Render construye y despliega automáticamente
+
+### Paso 4: Tu URL pública
+- Render te da: `los-compas-pizzeria.onrender.com`
+- Esta URL es permanente y accesible 24/7
+
+### Paso 5: Dominio propio (opcional)
+1. Render → tu servicio → Settings → Custom Domains
 2. Agrega tu dominio (ej: `www.loscompaspizzeria.com`)
-3. Configura los DNS según las instrucciones de Vercel
-4. HTTPS se configura automáticamente
+3. Configura los DNS según Render
+4. HTTPS automático ✅
 
-### Paso 5: Configurar WhatsApp Cloud API (opcional)
+### Paso 6: WhatsApp Cloud API (opcional)
 1. Ve a developers.facebook.com
 2. Crea una app de WhatsApp Business
-3. Obtén el token de acceso y el ID de teléfono
-4. Configura en Vercel las variables:
+3. Obtén el token y el ID de teléfono
+4. Configura en Render → Environment:
    - `WHATSAPP_TOKEN`
    - `WHATSAPP_PHONE_NUMBER_ID`
-5. Los mensajes automáticos se enviarán en cada cambio de estado de pedido
-
-### Paso 6: Configurar Notificaciones Push (opcional)
-1. Genera VAPID keys:
-```bash
-npx web-push generate-vapid-keys
-```
-2. Configura en Vercel:
-   - `VAPID_PUBLIC_KEY`
-   - `VAPID_PRIVATE_KEY`
-3. Los clientes pueden suscribirse a push notifications desde su navegador
 
 ### Notas importantes
-
-- **SQLite en Vercel**: SQLite funciona en desarrollo. En producción con Vercel (serverless),
-  considera migrar a PostgreSQL (Neon, Supabase) cambiando `DATABASE_URL` y el provider en `schema.prisma`.
-- **Backups**: Usa la pestaña "Backup" del panel admin para exportar JSON regularmente.
-- **Actualizaciones**: Sube cambios al repo de GitHub y Vercel despliega automáticamente.
+- **Free tier**: La app "duerme" tras 15 min sin actividad. La primera visita tarda ~30s en despertar.
+- **Para always-on**: Plan Starter ($7/mes) — sin cold starts.
+- **Base de datos**: PostgreSQL free tier expira a los 90 días. Para permanente: $7/mes.
+- **Backups**: Usa la pestaña "Backup" del admin para exportar JSON.
 
 ### Cuentas demo (cambiar en producción)
 - admin / admin123
@@ -73,4 +93,5 @@ bun run dev        # Desarrollo local
 bun run lint       # Verificar errores
 bun run db:push    # Actualizar base de datos
 bun run db:generate # Regenerar cliente Prisma
+bun scripts/init-prod.sh  # Inicializar BD en producción
 ```

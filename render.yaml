@@ -1,0 +1,34 @@
+# Render.com Blueprint para LOS COMPAS PIZZERÍA PWA
+# Este archivo configura el despliegue automático en Render
+
+databases:
+  - name: los-compas-db
+    plan: free
+    databaseName: los_compas
+    ipAllowList: []  # Permite conexiones desde cualquier IP
+
+services:
+  - type: web
+    name: los-compas-pizzeria
+    env: node
+    plan: free
+    buildCommand: bun install && bun run db:generate
+    startCommand: bun run start
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_PROVIDER
+        value: postgresql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: los-compas-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: WHATSAPP_TOKEN
+        sync: false  # Configurar manualmente después
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
