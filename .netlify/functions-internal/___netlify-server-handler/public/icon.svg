@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="pizzaGrad" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#e8b87a"/>
+      <stop offset="70%" stop-color="#d49050"/>
+      <stop offset="100%" stop-color="#9a5a28"/>
+    </radialGradient>
+    <radialGradient id="cheeseGrad" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#ffd966"/>
+      <stop offset="100%" stop-color="#d4a02b"/>
+    </radialGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1410"/>
+      <stop offset="100%" stop-color="#2a1c14"/>
+    </linearGradient>
+  </defs>
+  <!-- Fondo redondeado -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGrad)"/>
+  <!-- Anillo exterior (sombra) -->
+  <circle cx="256" cy="260" r="190" fill="#0e0a08" opacity="0.55"/>
+  <!-- Borde de la pizza (masa) -->
+  <circle cx="256" cy="256" r="186" fill="url(#pizzaGrad)"/>
+  <circle cx="256" cy="256" r="186" fill="none" stroke="#7a4318" stroke-width="6"/>
+  <!-- Salsa de tomate -->
+  <circle cx="256" cy="256" r="158" fill="#a8321f"/>
+  <circle cx="256" cy="256" r="158" fill="none" stroke="#7a1f2b" stroke-width="4"/>
+  <!-- Capa de queso -->
+  <circle cx="256" cy="256" r="148" fill="url(#cheeseGrad)" opacity="0.92"/>
+  <!-- Manchas de salsa visibles (estilo cartoon) -->
+  <circle cx="180" cy="200" r="14" fill="#a8321f" opacity="0.55"/>
+  <circle cx="330" cy="220" r="10" fill="#a8321f" opacity="0.55"/>
+  <circle cx="200" cy="340" r="12" fill="#a8321f" opacity="0.55"/>
+  <!-- Pepperoni / salchicha -->
+  <circle cx="200" cy="180" r="22" fill="#b8302a"/>
+  <circle cx="200" cy="180" r="22" fill="none" stroke="#7a1f2b" stroke-width="2"/>
+  <circle cx="200" cy="180" r="3" fill="#7a1f2b"/>
+  <circle cx="195" cy="172" r="2.5" fill="#7a1f2b"/>
+  <circle cx="207" cy="186" r="2.5" fill="#7a1f2b"/>
+
+  <circle cx="320" cy="200" r="20" fill="#b8302a"/>
+  <circle cx="320" cy="200" r="20" fill="none" stroke="#7a1f2b" stroke-width="2"/>
+  <circle cx="316" cy="196" r="2.5" fill="#7a1f2b"/>
+  <circle cx="324" cy="204" r="2.5" fill="#7a1f2b"/>
+
+  <circle cx="180" cy="320" r="22" fill="#b8302a"/>
+  <circle cx="180" cy="320" r="22" fill="none" stroke="#7a1f2b" stroke-width="2"/>
+  <circle cx="175" cy="316" r="2.5" fill="#7a1f2b"/>
+  <circle cx="184" cy="324" r="2.5" fill="#7a1f2b"/>
+
+  <circle cx="335" cy="320" r="20" fill="#b8302a"/>
+  <circle cx="335" cy="320" r="20" fill="none" stroke="#7a1f2b" stroke-width="2"/>
+  <circle cx="331" cy="316" r="2.5" fill="#7a1f2b"/>
+  <circle cx="339" cy="324" r="2.5" fill="#7a1f2b"/>
+  <!-- Hojas de albahaca -->
+  <ellipse cx="256" cy="160" rx="10" ry="6" fill="#3a7a2b" transform="rotate(-20 256 160)"/>
+  <ellipse cx="150" cy="256" rx="10" ry="6" fill="#3a7a2b" transform="rotate(70 150 256)"/>
+  <ellipse cx="362" cy="256" rx="10" ry="6" fill="#3a7a2b" transform="rotate(110 362 256)"/>
+  <!-- Texto LOS COMPAS en la parte inferior -->
+  <text x="256" y="470" text-anchor="middle"
+    font-family="Arial, sans-serif" font-weight="900" font-size="46"
+    fill="#ffd966" letter-spacing="2">LOS COMPAS</text>
+</svg>
