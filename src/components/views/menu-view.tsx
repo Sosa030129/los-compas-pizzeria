@@ -9,7 +9,7 @@ import type { CartItem, CartItemIngredient, IngredientQty, Product } from '@/lib
 import { toast } from 'sonner';
 
 const QTY_OPTIONS: IngredientQty[] = ['normal', 'doble', 'triple'];
-const BASE_INCLUDED = new Set(['queso']);
+// Ya no usamos BASE_INCLUDED global: cada pizza tiene sus defaultIngredients como incluidos
 
 export function MenuView() {
   const products = useStore((s) => s.products);
@@ -25,7 +25,25 @@ export function MenuView() {
   const [step, setStep] = useState<'size' | 'ingredients'>('size');
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedIngs, setSelectedIngs] = useState<CartItemIngredient[]>([]);
+  // Defaults iniciales al abrir el modal (para detectar modificaciones y calcular free portions)
+  const [initialDefaults, setInitialDefaults] = useState<CartItemIngredient[]>([]);
   const scrollRef = useRef(0);
+
+  // IDs de ingredientes que son predeterminados de la pizza actual (→ 1 porción gratis)
+  const defaultIngredientIds = useMemo(
+    () => new Set(initialDefaults.map((ci) => ci.ingredientId)),
+    [initialDefaults],
+  );
+
+  // Detectar si el usuario modificó algo respecto a los defaults iniciales
+  const hasModifications = useMemo(() => {
+    if (selectedIngs.length !== initialDefaults.length) return true;
+    for (const def of initialDefaults) {
+      const match = selectedIngs.find((s) => s.ingredientId === def.ingredientId);
+      if (!match || match.qty !== def.qty) return true;
+    }
+    return false;
+  }, [selectedIngs, initialDefaults]);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
@@ -47,7 +65,9 @@ export function MenuView() {
       setQuickAdd(p);
       setStep('size');
       setSelectedSize(null);
-      setSelectedIngs(p.defaultIngredients?.map((ingId) => ({ ingredientId: ingId, qty: 'normal' as const })) || []);
+      const defs = p.defaultIngredients?.map((ingId) => ({ ingredientId: ingId, qty: 'normal' as const })) || [];
+      setSelectedIngs(defs);
+      setInitialDefaults(defs);
     } else {
       addToCart({ id: uid('cart'), productId: p.id, name: p.name, emoji: p.emoji, unitPrice: p.price, qty: 1, extrasTotal: 0 });
       toast.success(`${p.name} agregado al carrito`);
@@ -63,12 +83,13 @@ export function MenuView() {
     });
   };
 
+  // extras: solo se cobran las porciones adicionales a las incluidas por defecto
   const extras = selectedIngs.reduce((sum, ci) => {
     const ing = ingredients.find((i) => i.id === ci.ingredientId);
     if (!ing || !selectedSize) return sum;
     const price = ing.priceBySize[selectedSize] || 0;
     const mult = ingredientQtyMultiplier(ci.qty);
-    const freePortions = BASE_INCLUDED.has(ci.ingredientId) ? 1 : 0;
+    const freePortions = defaultIngredientIds.has(ci.ingredientId) ? 1 : 0;
     return sum + price * Math.max(0, mult - freePortions);
   }, 0);
 
@@ -83,14 +104,27 @@ export function MenuView() {
       unitPrice: size.basePrice, qty: 1, size: size.id, extrasTotal: extras, ingredients: selectedIngs,
     });
     toast.success(`${quickAdd.name} (${size.label}) agregada`);
-    setQuickAdd(null);
-    setStep('size');
-    setTimeout(() => window.scrollTo(0, scrollRef.current), 100);
+    closeAndReset();
   };
 
+  // Cierra el modal y restaura scroll. Si está en paso ingredientes y no modificó nada,
+  // agrega la pizza al carrito con los defaults (ingredientes incluidos, extrasTotal=0).
   const closeModal = () => {
+    if (!hasModifications && quickAdd && selectedSize && step === 'ingredients') {
+      const size = sizes.find((s) => s.id === selectedSize)!;
+      addToCart({
+        id: uid('cart'), productId: quickAdd.id, name: quickAdd.name, emoji: quickAdd.emoji,
+        unitPrice: size.basePrice, qty: 1, size: size.id, extrasTotal: 0, ingredients: initialDefaults,
+      });
+      toast.success(`${quickAdd.name} (${size.label}) agregada`);
+    }
+    closeAndReset();
+  };
+
+  const closeAndReset = () => {
     setQuickAdd(null);
     setStep('size');
+    setInitialDefaults([]);
     setTimeout(() => window.scrollTo(0, scrollRef.current), 100);
   };
 
@@ -206,7 +240,7 @@ export function MenuView() {
                       const qty = ci?.qty;
                       const price = ing.priceBySize[selectedSize!] || 0;
                       const mult = qty ? ingredientQtyMultiplier(qty) : 0;
-                      const freePortions = BASE_INCLUDED.has(ing.id) ? 1 : 0;
+                      const freePortions = defaultIngredientIds.has(ing.id) ? 1 : 0;
                       const charge = Math.max(0, mult - freePortions) * price;
                       return (
                         <div key={ing.id} className={`flex items-center gap-2 p-2 rounded-lg border ${qty ? 'border-primary bg-primary/10' : 'border-border'}`}>
@@ -243,9 +277,20 @@ export function MenuView() {
                     <span className="font-cartoon text-base text-primary">{formatCUP(total)}</span>
                   </div>
 
-                  <button onClick={confirmAdd} className="w-full bg-primary text-primary-foreground py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop">
-                    Agregar al carrito · {formatCUP(total)}
-                  </button>
+                  {hasModifications ? (
+                    <button onClick={confirmAdd} className="w-full bg-primary text-primary-foreground py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop">
+                      Enviar al carrito · {formatCUP(total)}
+                    </button>
+                  ) : (
+                    <div className="text-center py-2 px-3 rounded-2xl bg-secondary/40">
+                      <p className="text-xs text-muted-foreground">
+                        ✅ Pizza con ingredientes predeterminados
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Cierra esta ventana para agregarla al carrito
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
             </motion.div>

@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import type { CartItem, CartItemIngredient, IngredientQty } from '@/lib/types';
 
 const QTY_OPTIONS: IngredientQty[] = ['normal', 'doble', 'triple'];
-const BASE_INCLUDED = new Set(['queso']);
+// Ya no usamos BASE_INCLUDED global: cada pizza tiene sus defaultIngredients como incluidos
 
 export function CartView() {
   const cart = useStore((s) => s.cart);
@@ -440,7 +440,15 @@ export function CartView() {
                   const qty = ci?.qty;
                   const price = ing.priceBySize[editItem.size!] || 0;
                   const mult = qty ? ingredientQtyMultiplier(qty) : 0;
-                  const freePortions = BASE_INCLUDED.has(ing.id) ? 1 : 0;
+                  const editDefaults = (() => {
+                    const s = new Set<string>();
+                    if (editItem.productId) {
+                      const p = products.find((pr) => pr.id === editItem.productId);
+                      p?.defaultIngredients?.forEach((id) => s.add(id));
+                    }
+                    return s;
+                  })();
+                  const freePortions = editDefaults.has(ing.id) ? 1 : 0;
                   const charge = Math.max(0, mult - freePortions) * price;
                   return (
                     <div key={ing.id} className={`flex items-center gap-2 p-2 rounded-lg border ${qty ? 'border-primary bg-primary/10' : 'border-border'}`}>
@@ -480,12 +488,20 @@ export function CartView() {
               </div>
 
               {(() => {
+                const editDefaults = (() => {
+                  const s = new Set<string>();
+                  if (editItem.productId) {
+                    const p = products.find((pr) => pr.id === editItem.productId);
+                    p?.defaultIngredients?.forEach((id) => s.add(id));
+                  }
+                  return s;
+                })();
                 const newExtras = editIngs.reduce((sum, ci) => {
                   const ing = ingredients.find((i) => i.id === ci.ingredientId);
                   if (!ing) return sum;
                   const price = ing.priceBySize[editItem.size!] || 0;
                   const mult = ingredientQtyMultiplier(ci.qty);
-                  const freePortions = BASE_INCLUDED.has(ci.ingredientId) ? 1 : 0;
+                  const freePortions = editDefaults.has(ci.ingredientId) ? 1 : 0;
                   return sum + price * Math.max(0, mult - freePortions);
                 }, 0);
                 const newTotal = editItem.unitPrice + newExtras;
