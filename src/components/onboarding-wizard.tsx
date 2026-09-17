@@ -84,10 +84,9 @@ export function OnboardingWizard() {
   const next = () => step < 3 ? setStep(step + 1) : handleComplete();
   const prev = () => step > 0 ? setStep(step - 1) : null;
 
-  // Verificar si ya completó el setup
-  if (typeof window !== 'undefined' && localStorage.getItem('los-compas-setup-done') === 'true') {
-    return null;
-  }
+  // El wizard está deshabilitado porque el seed del build ya configura todo.
+  // El admin puede cambiar todo desde el panel de administración.
+  return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
