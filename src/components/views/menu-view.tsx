@@ -35,16 +35,6 @@ export function MenuView() {
     [initialDefaults],
   );
 
-  // Detectar si el usuario modificó algo respecto a los defaults iniciales
-  const hasModifications = useMemo(() => {
-    if (selectedIngs.length !== initialDefaults.length) return true;
-    for (const def of initialDefaults) {
-      const match = selectedIngs.find((s) => s.ingredientId === def.ingredientId);
-      if (!match || match.qty !== def.qty) return true;
-    }
-    return false;
-  }, [selectedIngs, initialDefaults]);
-
   const filtered = useMemo(() => {
     return products.filter((p) => {
       if (activeCat !== 'all' && p.category !== activeCat) return false;
@@ -107,16 +97,17 @@ export function MenuView() {
     closeAndReset();
   };
 
-  // Cierra el modal y restaura scroll. Si está en paso ingredientes y no modificó nada,
-  // agrega la pizza al carrito con los defaults (ingredientes incluidos, extrasTotal=0).
+  // Cierra el modal y restaura scroll. Cuando el usuario ya eligió tamaño (paso
+  // ingredientes), siempre envía la pizza al carrito con los ingredientes actuales
+  // (defaults + agregados extra). El precio final = base + extras.
   const closeModal = () => {
-    if (!hasModifications && quickAdd && selectedSize && step === 'ingredients') {
+    if (quickAdd && selectedSize && step === 'ingredients') {
       const size = sizes.find((s) => s.id === selectedSize)!;
       addToCart({
         id: uid('cart'), productId: quickAdd.id, name: quickAdd.name, emoji: quickAdd.emoji,
-        unitPrice: size.basePrice, qty: 1, size: size.id, extrasTotal: 0, ingredients: initialDefaults,
+        unitPrice: size.basePrice, qty: 1, size: size.id, extrasTotal: extras, ingredients: selectedIngs,
       });
-      toast.success(`${quickAdd.name} (${size.label}) agregada`);
+      toast.success(`${quickAdd.name} (${size.label}) · ${formatCUP(size.basePrice + extras)}`);
     }
     closeAndReset();
   };
@@ -277,20 +268,12 @@ export function MenuView() {
                     <span className="font-cartoon text-base text-primary">{formatCUP(total)}</span>
                   </div>
 
-                  {hasModifications ? (
-                    <button onClick={confirmAdd} className="w-full bg-primary text-primary-foreground py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop">
-                      Enviar al carrito · {formatCUP(total)}
-                    </button>
-                  ) : (
-                    <div className="text-center py-2 px-3 rounded-2xl bg-secondary/40">
-                      <p className="text-xs text-muted-foreground">
-                        ✅ Pizza con ingredientes predeterminados
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Cierra esta ventana para agregarla al carrito
-                      </p>
-                    </div>
-                  )}
+                  <button onClick={confirmAdd} className="w-full bg-primary text-primary-foreground py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop">
+                    Enviar al carrito · {formatCUP(total)}
+                  </button>
+                  <p className="text-[10px] text-center text-muted-foreground mt-2">
+                    También puedes cerrar esta ventana para enviarla al carrito
+                  </p>
                 </>
               )}
             </motion.div>
