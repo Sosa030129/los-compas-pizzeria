@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  /* config options here */
+  // Sin output: "standalone" — usamos next start que incluye todos los node_modules
   typescript: {
     ignoreBuildErrors: true,
   },

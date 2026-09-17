@@ -1,18 +1,10 @@
-# Render.com Blueprint para LOS COMPAS PIZZERÍA PWA
-
-databases:
-  - name: los-compas-db
-    plan: free
-    databaseName: los_compas
-    ipAllowList: []
-
 services:
   - type: web
     name: los-compas-pizzeria
     env: node
     plan: free
     buildCommand: bash scripts/render-build.sh
-    startCommand: NODE_ENV=production node .next/standalone/server.js
+    startCommand: npx next start -p $PORT
     healthCheckPath: /
     autoDeploy: true
     envVars:
@@ -22,8 +14,6 @@ services:
           property: connectionString
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: WHATSAPP_TOKEN
         sync: false
       - key: WHATSAPP_PHONE_NUMBER_ID
