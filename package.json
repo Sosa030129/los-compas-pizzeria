@@ -5,14 +5,14 @@
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "start": "NODE_ENV=production node .next/standalone/server.js",
     "lint": "eslint .",
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "render-build": "bun install && bun run db:generate && bun scripts/seed-backend.ts",
-    "render-start": "bun run start"
+    "render-build": "bash scripts/render-build.sh",
+    "render-start": "node .next/standalone/server.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
