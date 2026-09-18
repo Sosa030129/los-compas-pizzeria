@@ -138,26 +138,37 @@ export const SMALL_SIZES: PizzaSize[] = ['pequena_20', 'mediana_25', 'grande_30'
 export const FAMILY_SIZES: PizzaSize[] = ['rect_35x40', 'familiar_42x30', 'extra_46x36'];
 
 // FASE 3 fix: Helper para obtener el precio de un ingrediente para un tamaño dado.
-// Si priceBySize tiene el tamaño, lo usa. Si no (ingrediente guardado con datos
-// legacy o null), deriva el precio desde el grupo pequeño/familiar usando los
-// campos auxiliares priceSmall / priceFamily si existen, sino 0.
+// Tiene múltiples fallbacks para ser robusto frente a datos legacy/null en BD.
 export function getIngredientPrice(
   ing: Ingredient,
   size: PizzaSize | undefined | null,
 ): number {
   if (!size) return 0;
-  // 1. Intentar priceBySize[size] (caso normal)
-  const direct = ing.priceBySize?.[size];
-  if (typeof direct === 'number' && direct > 0) return direct;
-  // 2. Fallback: usar priceSmall o priceFamily según grupo del tamaño
+
+  const pbs = ing.priceBySize;
+  // 1. Caso normal: priceBySize[size] existe y es > 0
+  if (pbs && typeof pbs === 'object') {
+    const direct = (pbs as any)[size];
+    if (typeof direct === 'number' && direct > 0) return direct;
+  }
+
+  // 2. Derivar desde cualquier otro tamaño del MISMO grupo (small vs family)
   const isFamily = FAMILY_SIZES.includes(size);
-  const fallback = isFamily
-    ? (ing as any).priceFamily ?? (ing as any).priceFamiliar
-    : (ing as any).priceSmall ?? (ing as any).pricePequeno;
-  if (typeof fallback === 'number' && fallback > 0) return fallback;
-  // 3. Último recurso: buscar cualquier valor en priceBySize
-  const anyPrice = ing.priceBySize ? Object.values(ing.priceBySize).find((v) => typeof v === 'number' && v > 0) : undefined;
-  return anyPrice ?? 0;
+  const sameGroup = isFamily ? FAMILY_SIZES : SMALL_SIZES;
+  if (pbs && typeof pbs === 'object') {
+    for (const s of sameGroup) {
+      const p = (pbs as any)[s];
+      if (typeof p === 'number' && p > 0) return p;
+    }
+  }
+
+  // 3. Último recurso: cualquier precio > 0 en priceBySize
+  if (pbs && typeof pbs === 'object') {
+    const anyPrice = Object.values(pbs).find((v) => typeof v === 'number' && v > 0);
+    if (typeof anyPrice === 'number') return anyPrice;
+  }
+
+  return 0;
 }
 
 // Valida teléfono (formatos Cuba + internacional)

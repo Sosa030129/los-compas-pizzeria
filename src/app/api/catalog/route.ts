@@ -2,6 +2,19 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// FASE 3 fix: borderDelta hardcoded por tamaño porque el schema Prisma no tiene esa columna.
+// Estos valores vienen directamente de la spec del negocio y deben coincidir con los de
+// src/lib/seed.ts. Si en el futuro se agrega la columna a Prisma, se puede eliminar este map.
+const BORDER_DELTAS: Record<string, number> = {
+  'pequena_20': 150,
+  'mediana_25': 150,
+  'grande_30': 150,
+  'rect_30x20': 150,
+  'rect_35x40': 300,
+  'familiar_42x30': 500,
+  'extra_46x36': 550,
+};
+
 export async function GET() {
   try {
     const [
@@ -37,6 +50,11 @@ export async function GET() {
       if (!pbs || typeof pbs !== 'object' || Array.isArray(pbs)) pbs = {};
       return { ...i, priceBySize: pbs };
     });
+    // FASE 3 fix: inyectar borderDelta desde constante hardcoded (no está en BD)
+    const parsedSizes = sizes.map((s) => ({
+      ...s,
+      borderDelta: BORDER_DELTAS[s.sizeId] ?? 0,
+    }));
     const parsedConfig = config ? {
       ...config,
       transferSurcharge: config.transferSurcharge,
@@ -48,7 +66,7 @@ export async function GET() {
         categories,
         products: parsedProducts,
         ingredients: parsedIngredients,
-        sizes,
+        sizes: parsedSizes,
         promotions,
         whatsappNumbers,
         config: parsedConfig,
