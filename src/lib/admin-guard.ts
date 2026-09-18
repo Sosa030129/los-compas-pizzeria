@@ -1,6 +1,5 @@
 // Helper compartido para verificar admin en API routes
 import { getSession } from './server-auth';
-import type { Session } from './types';
 
 export async function requireAdminSession() {
   const session = await getSession();

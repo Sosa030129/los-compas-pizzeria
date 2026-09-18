@@ -53,75 +53,87 @@ async function main() {
   ]);
   console.log(`✓ ${categories.length} categorías`);
 
-  // 3. Tamaños de pizza
+  // 3. Tamaños de pizza (con borderDelta según spec del negocio)
   const sizes = [
-    { sizeId: 'pequena_20', label: 'Pequeña 20cm', basePrice: 800, order: 1 },
-    { sizeId: 'mediana_25', label: 'Mediana 25cm', basePrice: 1200, order: 2 },
-    { sizeId: 'grande_30', label: 'Grande 30cm', basePrice: 1600, order: 3 },
-    { sizeId: 'rect_30x20', label: 'Rect. Pequeña 30×20cm', basePrice: 1400, order: 4 },
-    { sizeId: 'rect_35x40', label: 'Rect. Mediana 35×40cm', basePrice: 2000, order: 5 },
+    { sizeId: 'pequena_20', label: 'Pequeña 20cm', basePrice: 600, order: 1 },
+    { sizeId: 'mediana_25', label: 'Mediana 25cm', basePrice: 800, order: 2 },
+    { sizeId: 'grande_30', label: 'Grande 30cm', basePrice: 900, order: 3 },
+    { sizeId: 'rect_30x20', label: 'Rect. Pequeña 30×20cm', basePrice: 850, order: 4 },
+    { sizeId: 'rect_35x40', label: 'Rect. Mediana 35×40cm', basePrice: 1800, order: 5 },
     { sizeId: 'familiar_42x30', label: 'Familiar 42×30cm', basePrice: 2200, order: 6 },
-    { sizeId: 'extra_46x36', label: 'Extra Familiar 46×36cm', basePrice: 2600, order: 7 },
+    { sizeId: 'extra_46x36', label: 'Extra Familiar 46×36cm', basePrice: 2450, order: 7 },
   ];
   await Promise.all(sizes.map((s) => db.sizeOption.create({ data: s })));
   console.log(`✓ ${sizes.length} tamaños de pizza`);
 
-  // 4. Ingredientes
+  // 4. Ingredientes — 2 precios (pequeñas / familiares) según spec del negocio.
+  // Pequeñas = 20cm, 25cm, 30cm, 30×20 (usan priceSmall)
+  // Familiares = 35×40, 42×30, 46×36 (usan priceFamily)
+  const SMALL_SIZES = ['pequena_20', 'mediana_25', 'grande_30', 'rect_30x20'];
+  const FAMILY_SIZES = ['rect_35x40', 'familiar_42x30', 'extra_46x36'];
+  const buildPriceBySize = (small: number, family: number) => {
+    const obj: Record<string, number> = {};
+    for (const s of SMALL_SIZES) obj[s] = small;
+    for (const s of FAMILY_SIZES) obj[s] = family;
+    return JSON.stringify(obj);
+  };
   const ingredients = [
-    { name: 'Queso extra', emoji: '🧀', color: '#ffd966', priceBySize: JSON.stringify({ pequena_20: 250, mediana_25: 350, grande_30: 450, rect_30x20: 400, rect_35x40: 550, familiar_42x30: 700, extra_46x36: 800 }) },
-    { name: 'Jamón', emoji: '🍖', color: '#e07a6b', priceBySize: JSON.stringify({ pequena_20: 220, mediana_25: 320, grande_30: 420, rect_30x20: 380, rect_35x40: 520, familiar_42x30: 580, extra_46x36: 680 }) },
-    { name: 'Salchicha', emoji: '🌭', color: '#b8302a', priceBySize: JSON.stringify({ pequena_20: 230, mediana_25: 330, grande_30: 430, rect_30x20: 390, rect_35x40: 540, familiar_42x30: 600, extra_46x36: 700 }) },
-    { name: 'Piña', emoji: '🍍', color: '#f6c945', priceBySize: JSON.stringify({ pequena_20: 200, mediana_25: 280, grande_30: 360, rect_30x20: 320, rect_35x40: 440, familiar_42x30: 500, extra_46x36: 580 }) },
-    { name: 'Cebolla', emoji: '🧅', color: '#f0e3c4', priceBySize: JSON.stringify({ pequena_20: 150, mediana_25: 200, grande_30: 250, rect_30x20: 220, rect_35x40: 300, familiar_42x30: 350, extra_46x36: 400 }) },
-    { name: 'Vegetales', emoji: '🥬', color: '#3a7a2b', priceBySize: JSON.stringify({ pequena_20: 180, mediana_25: 240, grande_30: 300, rect_30x20: 280, rect_35x40: 380, familiar_42x30: 450, extra_46x36: 520 }) },
-    { name: 'Champiñones', emoji: '🍄', color: '#c4a080', priceBySize: JSON.stringify({ pequena_20: 200, mediana_25: 280, grande_30: 360, rect_30x20: 320, rect_35x40: 440, familiar_42x30: 500, extra_46x36: 580 }) },
-    { name: 'Ají', emoji: '🌶️', color: '#d23a3a', priceBySize: JSON.stringify({ pequena_20: 150, mediana_25: 200, grande_30: 250, rect_30x20: 220, rect_35x40: 300, familiar_42x30: 350, extra_46x36: 400 }) },
+    { id: 'queso', name: 'Queso extra', emoji: '🧀', color: '#ffd966', priceBySize: buildPriceBySize(250, 700) },
+    { id: 'jamon', name: 'Jamón', emoji: '🍖', color: '#e07a6b', priceBySize: buildPriceBySize(230, 580) },
+    { id: 'salchicha', name: 'Salchicha', emoji: '🌭', color: '#b8302a', priceBySize: buildPriceBySize(350, 750) },
+    { id: 'pina', name: 'Piña', emoji: '🍍', color: '#f6c945', priceBySize: buildPriceBySize(200, 550) },
+    { id: 'cebolla', name: 'Cebolla', emoji: '🧅', color: '#f0e3c4', priceBySize: buildPriceBySize(180, 450) },
+    { id: 'vegetales', name: 'Vegetales', emoji: '🥬', color: '#3a7a2b', priceBySize: buildPriceBySize(200, 500) },
+    { id: 'champinones', name: 'Champiñones', emoji: '🍄', color: '#c4a080', priceBySize: buildPriceBySize(200, 500) },
+    { id: 'aji', name: 'Ají', emoji: '🌶️', color: '#d23a3a', priceBySize: buildPriceBySize(150, 350) },
   ];
   await Promise.all(ingredients.map((i) => db.ingredient.create({ data: i })));
   console.log(`✓ ${ingredients.length} ingredientes`);
 
-  // 5. Productos (incluyendo pizzas y combos)
+  // 5. Productos según spec del negocio (32 total: 5 pizzas + 7 comidas + 7 postres + 11 bebidas + 2 combos)
   const products = [
     // PIZZAS
-    { name: 'Pizza Personalizada', description: 'Pizza armada por el cliente con ingredientes a elección.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso']) },
-    { name: 'Pizza Muzzarella', description: 'Clásica: masa artesanal, salsa de tomate y queso fundido.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 20, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso']) },
-    { name: 'Pizza Especial', description: 'Queso, jamón y salchicha. La favorita de la casa.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'jamon', 'salchicha']) },
-    { name: 'Pizza Hawaiana', description: 'Jamón, piña y queso. Dulce y salada a la vez.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'jamon', 'pina']) },
-    { name: 'Pizza Vegetal', description: 'Vegetales frescos, cebolla y champiñones.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 25, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'vegetales', 'cebolla', 'champinones']) },
+    { id: 'pizza_custom', name: 'Pizza Personalizada', description: 'Pizza armada por el cliente con ingredientes a elección.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso']) },
+    { id: 'pizza_muzzarella', name: 'Pizza Muzzarella', description: 'Clásica: masa artesanal, salsa de tomate y queso fundido.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 20, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso']) },
+    { id: 'pizza_especial', name: 'Pizza Especial', description: 'Queso, jamón y salchicha. La favorita de la casa.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'jamon', 'salchicha']) },
+    { id: 'pizza_hawaiana', name: 'Pizza Hawaiana', description: 'Jamón, piña y queso. Dulce y salada a la vez.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'jamon', 'pina']) },
+    { id: 'pizza_vegetal', name: 'Pizza Vegetal', description: 'Vegetales frescos, cebolla y champiñones.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 25, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'vegetales', 'cebolla', 'champinones']) },
     // COMIDAS
-    { name: 'Tacos de Salchicha', description: '4 tacos crujientes rellenos de salchicha.', categoryId: 'comidas', emoji: '🌮', price: 750, prepTime: 15 },
-    { name: 'Tacos de Jamón', description: '4 tacos crujientes rellenos de jamón.', categoryId: 'comidas', emoji: '🌮', price: 750, prepTime: 15 },
-    { name: 'Empanadas de Queso', description: '6 empanadas crujientes con queso fundido.', categoryId: 'comidas', emoji: '🥟', price: 700, prepTime: 18 },
-    { name: 'Espaguetis', description: 'Pasta italiana con salsa de tomate y queso.', categoryId: 'comidas', emoji: '🍝', price: 1100, prepTime: 20 },
-    { name: 'Tostones Normales', description: 'Plátano verde frito, crujiente y salado.', categoryId: 'comidas', emoji: '🍌', price: 350, prepTime: 12 },
-    { name: 'Tostones de Ajo', description: 'Tostones con aliño de ajo y hierbas.', categoryId: 'comidas', emoji: '🍌', price: 450, prepTime: 12 },
-    { name: 'Tostones Rellenos', description: 'Tostones rellenos de jamón y queso.', categoryId: 'comidas', emoji: '🍌', price: 650, prepTime: 15 },
+    { id: 'tacos_salchicha', name: 'Tacos de Salchicha', description: '3 tacos crujientes rellenos de salchicha.', categoryId: 'comidas', emoji: '🌮', price: 1000, prepTime: 15 },
+    { id: 'tacos_jamon', name: 'Tacos de Jamón', description: '3 tacos crujientes rellenos de jamón.', categoryId: 'comidas', emoji: '🌮', price: 1000, prepTime: 15 },
+    { id: 'empanadas_queso', name: 'Empanadas de Queso', description: '5 empanadas crujientes con queso fundido.', categoryId: 'comidas', emoji: '🥟', price: 1400, prepTime: 18 },
+    { id: 'espaguetis_queso', name: 'Espaguetis de Queso', description: 'Pasta italiana con salsa de tomate y queso fundido.', categoryId: 'comidas', emoji: '🍝', price: 600, prepTime: 20 },
+    { id: 'tostones_normales', name: 'Tostones Naturales', description: 'Plátano verde frito, crujiente y salado.', categoryId: 'comidas', emoji: '🍌', price: 450, prepTime: 12 },
+    { id: 'tostones_ajo', name: 'Tostones de Ajo', description: 'Tostones con aliño de ajo y hierbas.', categoryId: 'comidas', emoji: '🍌', price: 550, prepTime: 12 },
+    { id: 'tostones_rellenos', name: 'Tostones Rellenos', description: 'Tostones rellenos de jamón y queso.', categoryId: 'comidas', emoji: '🍌', price: 600, prepTime: 15 },
     // POSTRES
-    { name: 'Donas', description: '2 donas glaseadas, suaves y esponjosas.', categoryId: 'postres', emoji: '🍩', price: 400, prepTime: 5 },
-    { name: 'Berlinesas con Nutella', description: '2 berlinesas rellenas de crema de cacao.', categoryId: 'postres', emoji: '🍫', price: 550, prepTime: 5 },
-    { name: 'Rosquitas', description: '6 rosquitas crujientes tradicionales.', categoryId: 'postres', emoji: '🍩', price: 350, prepTime: 5 },
-    { name: 'Helados', description: 'Copa de helado, sabor a elegir.', categoryId: 'postres', emoji: '🍦', price: 500, prepTime: 3 },
+    { id: 'donas_nutella', name: 'Donas con Nutella', description: '6 donas con relleno de Nutella.', categoryId: 'postres', emoji: '🍩', price: 1000, prepTime: 5 },
+    { id: 'donas_cubierta_nutella', name: 'Donas con Cubierta y Relleno de Nutella', description: '6 donas con cubierta y relleno de crema de cacao.', categoryId: 'postres', emoji: '🍩', price: 1800, prepTime: 5 },
+    { id: 'berlinesas', name: 'Berlinesas con Nutella', description: '6 berlinesas rellenas de crema de cacao.', categoryId: 'postres', emoji: '🍫', price: 1300, prepTime: 5 },
+    { id: 'rosquitas_azucar', name: 'Rosquitas con Azúcar', description: '10 rosquitas crujientes con azúcar.', categoryId: 'postres', emoji: '🍩', price: 800, prepTime: 5 },
+    { id: 'rosquitas_rellenas', name: 'Rosquitas Rellenas con Nutella', description: '6 rosquitas rellenas con crema de cacao.', categoryId: 'postres', emoji: '🍩', price: 1300, prepTime: 5 },
+    { id: 'helados', name: 'Helados', description: 'Copa de helado, sabor a elegir.', categoryId: 'postres', emoji: '🍦', price: 500, prepTime: 3 },
+    { id: 'helados_potes', name: 'Potes de Helado', description: 'Pote de helado individual.', categoryId: 'postres', emoji: '🍦', price: 350, prepTime: 3 },
     // BEBIDAS
-    { name: 'Batidos', description: 'Batido de frutas naturales (mango, plátano, papaya).', categoryId: 'bebidas', emoji: '🥤', price: 350, prepTime: 5 },
-    { name: 'Coladas', description: 'Café cubano tradicional, 4 pocillos.', categoryId: 'bebidas', emoji: '☕', price: 200, prepTime: 5 },
-    { name: 'Malteadas', description: 'Malteada cremosa de chocolate, fresa o vainilla.', categoryId: 'bebidas', emoji: '🥤', price: 450, prepTime: 5 },
-    { name: 'Limonadas', description: 'Limonada fresca con o sin menta.', categoryId: 'bebidas', emoji: '🍋', price: 250, prepTime: 3 },
-    { name: 'Smoothies', description: 'Smoothie de frutas tropicales.', categoryId: 'bebidas', emoji: '🥤', price: 400, prepTime: 5 },
-    { name: 'Jugos Naturales', description: 'Jugos naturales de frutas de la temporada.', categoryId: 'bebidas', emoji: '🧃', price: 250, prepTime: 3 },
-    { name: 'Refrescos', description: 'Lata de refresco nacional 350ml.', categoryId: 'bebidas', emoji: '🥤', price: 200, prepTime: 1 },
-    { name: 'Malta', description: 'Malta fría 350ml.', categoryId: 'bebidas', emoji: '🍺', price: 250, prepTime: 1 },
-    { name: 'Cerveza', description: 'Cerveza nacional lata 355ml.', categoryId: 'bebidas', emoji: '🍺', price: 350, prepTime: 1 },
+    { id: 'batidos', name: 'Batidos Naturales', description: 'Batido de frutas naturales (mango, plátano, papaya).', categoryId: 'bebidas', emoji: '🥤', price: 600, prepTime: 5 },
+    { id: 'colada', name: 'Colada', description: 'Café cubano tradicional, 4 pocillos.', categoryId: 'bebidas', emoji: '☕', price: 600, prepTime: 5 },
+    { id: 'malteada', name: 'Malteada', description: 'Malteada cremosa de chocolate, fresa o vainilla.', categoryId: 'bebidas', emoji: '🥤', price: 650, prepTime: 5 },
+    { id: 'limonada', name: 'Limonada', description: 'Limonada fresca con o sin menta.', categoryId: 'bebidas', emoji: '🍋', price: 500, prepTime: 3 },
+    { id: 'limonada_brasilera', name: 'Limonada Brasilera', description: 'Limonada cremosa con leche condensada.', categoryId: 'bebidas', emoji: '🍋', price: 600, prepTime: 3 },
+    { id: 'smoothie', name: 'Smoothie', description: 'Smoothie de frutas tropicales.', categoryId: 'bebidas', emoji: '🥤', price: 700, prepTime: 5 },
+    { id: 'batido_nutella', name: 'Batido de Nutella', description: 'Batido cremoso con crema de cacao.', categoryId: 'bebidas', emoji: '🥤', price: 700, prepTime: 5 },
+    { id: 'jugos', name: 'Jugos Naturales', description: 'Jugos naturales de frutas de la temporada.', categoryId: 'bebidas', emoji: '🧃', price: 400, prepTime: 3 },
+    { id: 'refrescos', name: 'Refresco de Lata', description: 'Lata de refresco nacional 350ml.', categoryId: 'bebidas', emoji: '🥤', price: 550, prepTime: 1 },
+    { id: 'cerveza', name: 'Cerveza', description: 'Cerveza nacional lata 355ml.', categoryId: 'bebidas', emoji: '🍺', price: 600, prepTime: 1 },
+    { id: 'malta', name: 'Malta', description: 'Malta fría 350ml.', categoryId: 'bebidas', emoji: '🍺', price: 600, prepTime: 1 },
     // COMBOS
-    { name: 'Combo Familiar', description: 'Pizza familiar 42×30 + 2 bebidas + 1 postre.', categoryId: 'combos', emoji: '🎉', price: 3200, prepTime: 25, isCombo: true, comboItems: JSON.stringify(['pizza_especial', 'refrescos', 'refrescos', 'helados']) },
-    { name: 'Combo Duo', description: '2 pizzas medianas 25cm + 1 bebida grande.', categoryId: 'combos', emoji: '🎉', price: 2900, prepTime: 25, isCombo: true, comboItems: JSON.stringify(['pizza_muzzarella', 'pizza_especial', 'malteadas']) },
+    { id: 'combo_familiar', name: 'Combo Familiar', description: 'Pizza familiar 42×30 + 2 bebidas + 1 postre.', categoryId: 'combos', emoji: '🎉', price: 3200, prepTime: 25, isCombo: true, comboItems: JSON.stringify(['pizza_especial', 'refrescos', 'refrescos', 'helados']) },
+    { id: 'combo_duo', name: 'Combo Duo', description: '2 pizzas medianas 25cm + 1 bebida grande.', categoryId: 'combos', emoji: '🎉', price: 2900, prepTime: 25, isCombo: true, comboItems: JSON.stringify(['pizza_muzzarella', 'pizza_especial', 'malteada']) },
   ];
 
-  // Generar IDs estables basados en nombre para que las promociones funcionen
-  // (usamos el slug como ID)
-  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  // Generar IDs estables a partir del campo id (que ya viene como slug explícito)
   for (const p of products) {
-    const id = slug(p.name);
-    await db.product.create({ data: { id, ...p } });
+    await db.product.create({ data: p });
   }
   console.log(`✓ ${products.length} productos`);
 

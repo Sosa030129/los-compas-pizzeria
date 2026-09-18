@@ -5,7 +5,7 @@ import { useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, X, Minus, Check } from 'lucide-react';
 import { uid, ingredientQtyMultiplier, formatCUP } from '@/lib/los-compas';
-import type { CartItem, CartItemIngredient, IngredientQty, Product } from '@/lib/types';
+import type { CartItem, CartItemIngredient, IngredientQty, PizzaSize, Product } from '@/lib/types';
 import { toast } from 'sonner';
 
 const QTY_OPTIONS: IngredientQty[] = ['normal', 'doble', 'triple'];
@@ -23,8 +23,9 @@ export function MenuView() {
   const [activeCat, setActiveCat] = useState<string>('all');
   const [quickAdd, setQuickAdd] = useState<Product | null>(null);
   const [step, setStep] = useState<'size' | 'ingredients'>('size');
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<PizzaSize | null>(null);
   const [selectedIngs, setSelectedIngs] = useState<CartItemIngredient[]>([]);
+  const [borderCheese, setBorderCheese] = useState(false);
   // Defaults iniciales al abrir el modal (para detectar modificaciones y calcular free portions)
   const [initialDefaults, setInitialDefaults] = useState<CartItemIngredient[]>([]);
   const scrollRef = useRef(0);
@@ -55,6 +56,7 @@ export function MenuView() {
       setQuickAdd(p);
       setStep('size');
       setSelectedSize(null);
+      setBorderCheese(false);
       const defs = p.defaultIngredients?.map((ingId) => ({ ingredientId: ingId, qty: 'normal' as const })) || [];
       setSelectedIngs(defs);
       setInitialDefaults(defs);
@@ -84,30 +86,33 @@ export function MenuView() {
   }, 0);
 
   const currentSize = selectedSize ? sizes.find((s) => s.id === selectedSize) : null;
-  const total = (currentSize?.basePrice || 0) + extras;
+  const borderPrice = currentSize?.borderDelta ?? 0;
+  const total = (currentSize?.basePrice || 0) + (borderCheese ? borderPrice : 0) + extras;
 
   const confirmAdd = () => {
     if (!quickAdd || !selectedSize) return;
     const size = sizes.find((s) => s.id === selectedSize)!;
+    const unitPrice = size.basePrice + (borderCheese ? (size.borderDelta ?? 0) : 0);
     addToCart({
       id: uid('cart'), productId: quickAdd.id, name: quickAdd.name, emoji: quickAdd.emoji,
-      unitPrice: size.basePrice, qty: 1, size: size.id, extrasTotal: extras, ingredients: selectedIngs,
+      unitPrice, qty: 1, size: size.id, borderCheese, extrasTotal: extras, ingredients: selectedIngs,
     });
-    toast.success(`${quickAdd.name} (${size.label}) agregada`);
+    toast.success(`${quickAdd.name} (${size.label}${borderCheese ? ' · Borde queso' : ''}) agregada`);
     closeAndReset();
   };
 
   // Cierra el modal y restaura scroll. Cuando el usuario ya eligió tamaño (paso
   // ingredientes), siempre envía la pizza al carrito con los ingredientes actuales
-  // (defaults + agregados extra). El precio final = base + extras.
+  // (defaults + agregados extra). El precio final = base + borde + extras.
   const closeModal = () => {
     if (quickAdd && selectedSize && step === 'ingredients') {
       const size = sizes.find((s) => s.id === selectedSize)!;
+      const unitPrice = size.basePrice + (borderCheese ? (size.borderDelta ?? 0) : 0);
       addToCart({
         id: uid('cart'), productId: quickAdd.id, name: quickAdd.name, emoji: quickAdd.emoji,
-        unitPrice: size.basePrice, qty: 1, size: size.id, extrasTotal: extras, ingredients: selectedIngs,
+        unitPrice, qty: 1, size: size.id, borderCheese, extrasTotal: extras, ingredients: selectedIngs,
       });
-      toast.success(`${quickAdd.name} (${size.label}) · ${formatCUP(size.basePrice + extras)}`);
+      toast.success(`${quickAdd.name} (${size.label}${borderCheese ? ' · Borde queso' : ''}) · ${formatCUP(unitPrice + extras)}`);
     }
     closeAndReset();
   };
@@ -115,6 +120,7 @@ export function MenuView() {
   const closeAndReset = () => {
     setQuickAdd(null);
     setStep('size');
+    setBorderCheese(false);
     setInitialDefaults([]);
     setTimeout(() => window.scrollTo(0, scrollRef.current), 100);
   };
@@ -204,13 +210,21 @@ export function MenuView() {
                 <>
                   <p className="text-xs font-bold text-muted-foreground mb-2">Elige el tamaño:</p>
                   <div className="grid grid-cols-1 gap-1.5 mb-4">
-                    {sizes.map((s) => (
-                      <button key={s.id} onClick={() => { setSelectedSize(s.id); setStep('ingredients'); }}
-                        className="flex items-center justify-between bg-secondary/60 hover:bg-secondary transition rounded-xl px-3 py-2.5 text-left">
-                        <span className="text-sm font-medium">{s.label}</span>
-                        <span className="text-sm font-bold text-primary">{s.basePrice.toLocaleString('es-CU')} CUP</span>
-                      </button>
-                    ))}
+                    {sizes.map((s) => {
+                      const borderPrice = (s.borderDelta ?? 0) + s.basePrice;
+                      return (
+                        <button key={s.id} onClick={() => { setSelectedSize(s.id); setStep('ingredients'); }}
+                          className="flex items-center justify-between bg-secondary/60 hover:bg-secondary transition rounded-xl px-3 py-2.5 text-left">
+                          <span className="text-sm font-medium">{s.label}</span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-primary">{s.basePrice.toLocaleString('es-CU')} CUP</span>
+                            {s.borderDelta ? (
+                              <span className="text-[10px] text-muted-foreground">| Borde {borderPrice.toLocaleString('es-CU')}</span>
+                            ) : null}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               )}
@@ -223,6 +237,22 @@ export function MenuView() {
                     <span className="text-xs text-muted-foreground">·</span>
                     <span className="text-xs font-bold text-primary">{currentSize.label}</span>
                   </div>
+
+                  {/* Toggle Borde de queso */}
+                  {borderPrice > 0 && (
+                    <button
+                      onClick={() => setBorderCheese((v) => !v)}
+                      className={`w-full p-2.5 rounded-xl border-2 flex items-center justify-between transition mb-3 ${borderCheese ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}
+                    >
+                      <div className="text-left">
+                        <p className="text-xs font-bold">🧀 Borde de queso</p>
+                        <p className="text-[10px] text-muted-foreground">+{borderPrice.toLocaleString('es-CU')} CUP</p>
+                      </div>
+                      <span className={`w-10 h-6 rounded-full transition-colors flex items-center ${borderCheese ? 'bg-primary' : 'bg-muted-foreground'}`}>
+                        <span className={`w-4 h-4 bg-white rounded-full mx-1 transition-transform ${borderCheese ? 'translate-x-4' : ''}`} />
+                      </span>
+                    </button>
+                  )}
 
                   <p className="text-xs font-bold text-muted-foreground mb-2">Ingredientes (agrega o quita):</p>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto mb-3">

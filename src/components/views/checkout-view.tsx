@@ -138,7 +138,7 @@ export function CheckoutView() {
             <User size={16} className="text-primary" /> Tus datos
           </h2>
           <div className="space-y-2.5">
-            <Field label="Nombre completo *" error={touched && errors.name}>
+            <Field label="Nombre completo *" error={touched ? errors.name : undefined}>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -146,7 +146,7 @@ export function CheckoutView() {
                 className="bg-card border border-border rounded-xl px-3 py-2.5 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </Field>
-            <Field label="Número de teléfono *" error={touched && errors.phone}>
+            <Field label="Número de teléfono *" error={touched ? errors.phone : undefined}>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -190,7 +190,7 @@ export function CheckoutView() {
 
           {deliveryMode === 'domicilio' && (
             <div className="space-y-2.5">
-              <Field label="Dirección de entrega *" error={touched && errors.address}>
+              <Field label="Dirección de entrega *" error={touched ? errors.address : undefined}>
                 <textarea
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}

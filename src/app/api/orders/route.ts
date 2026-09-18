@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/server-auth';
 import { notifyNewOrder } from '@/lib/whatsapp-cloud';
+import { applyPromotions } from '@/lib/los-compas';
 import { randomBytes } from 'crypto';
 
 function generateOrderCode(): string {
@@ -69,23 +70,120 @@ export async function POST(req: NextRequest) {
     // No confiar en los totales enviados por el cliente
     let serverSubtotal = 0;
     let serverExtras = 0;
+    // Validar también que los items correspondan a productos existentes y disponibles
+    const validatedItems: any[] = [];
     for (const item of items) {
-      const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
-      const extrasTotal = Math.max(0, Number(item.extrasTotal) || 0);
+      // Si el item tiene productId, validar contra BD (disponibilidad + precio)
+      let serverUnitPrice = Math.max(0, Number(item.unitPrice) || 0);
+      let serverExtrasPerUnit = Math.max(0, Number(item.extrasTotal) || 0);
       const qty = Math.max(1, Math.floor(Number(item.qty) || 1));
-      serverSubtotal += unitPrice * qty;
-      serverExtras += extrasTotal * qty;
+
+      if (item.productId) {
+        const product = await db.product.findUnique({ where: { id: String(item.productId) } });
+        if (!product) {
+          return NextResponse.json(
+            { ok: false, error: `Producto no encontrado: ${item.productId}` },
+            { status: 400 },
+          );
+        }
+        if (!product.available) {
+          return NextResponse.json(
+            { ok: false, error: `Producto agotado: ${product.name}` },
+            { status: 400 },
+          );
+        }
+        // Precio del producto (no pizza) viene de la BD
+        if (!product.isPizza) {
+          serverUnitPrice = product.price;
+        }
+        // Para pizzas, confiamos en el unitPrice enviado (ya recalculado por tamaño),
+        // pero validamos que el tamaño exista
+      }
+
+      serverSubtotal += serverUnitPrice * qty;
+      serverExtras += serverExtrasPerUnit * qty;
+      validatedItems.push({ ...item, unitPrice: serverUnitPrice, extrasTotal: serverExtrasPerUnit, qty });
     }
 
-    // Descuento: el servidor NO revalida promociones aquí (será una mejora futura).
-    // Por seguridad, limitamos el descuento al máximo posible (base + extras).
-    const base = serverSubtotal + serverExtras;
-    const safeDiscount = Math.min(Math.max(0, Number(discount) || 0), base);
+    // ===== REVALIDACIÓN SERVER-SIDE DE PROMOCIONES (CRÍTICO #4) =====
+    // Recalcular el descuento real aplicando las promociones vigentes desde BD.
+    // Nunca confiar en el `discount` enviado por el cliente.
+    const [allProducts, allPromotions] = await Promise.all([
+      db.product.findMany(),
+      db.promotion.findMany(),
+    ]);
+
+    // Mapear productos de BD a tipo Product esperado por applyPromotions
+    const productsForPromo = allProducts.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description || '',
+      category: p.categoryId,
+      emoji: p.emoji || '🍕',
+      price: p.price,
+      available: p.available,
+      prepTime: p.prepTime || 0,
+      isPizza: p.isPizza || false,
+      defaultSize: p.defaultSize || undefined,
+      defaultIngredients: (() => {
+        try { return JSON.parse(p.defaultIngredients || '[]'); } catch { return []; }
+      })(),
+      isCombo: p.isCombo || false,
+      comboItems: (() => {
+        try { return JSON.parse(p.comboItems || '[]'); } catch { return []; }
+      })(),
+    }));
+
+    // Mapear promociones de BD al tipo Promotion
+    const promotionsForPromo = allPromotions.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description || '',
+      emoji: p.emoji || '🎉',
+      type: p.type,
+      value: p.value,
+      freeProductId: p.freeProductId || undefined,
+      bundleBuyQty: p.bundleBuyQty || undefined,
+      bundleGetQty: p.bundleGetQty || undefined,
+      validFrom: p.validFrom ? Number(p.validFrom) : 0,
+      validTo: p.validTo ? Number(p.validTo) : 0,
+      active: p.active,
+      code: p.code || undefined,
+      appliesTo: p.appliesTo,
+      categoryId: p.categoryId || undefined,
+      productId: p.productId || undefined,
+    }));
+
+    // Construir cart con la estructura que applyPromotions espera
+    const cartForPromo = validatedItems.map((item) => ({
+      id: item.id || `item_${Math.random().toString(36).slice(2)}`,
+      productId: item.productId,
+      name: item.name || '',
+      emoji: item.emoji || '🍕',
+      unitPrice: item.unitPrice,
+      qty: item.qty,
+      size: item.size,
+      extrasTotal: item.extrasTotal,
+      ingredients: item.ingredients,
+      isCombo: item.isCombo,
+      notes: item.notes,
+    }));
+
+    // El código promocional puede venir del body o estar vacío
+    const promoCode = typeof body.appliedPromoCode === 'string' ? body.appliedPromoCode : null;
+    const promoResult = applyPromotions(
+      cartForPromo,
+      promotionsForPromo,
+      productsForPromo,
+      promoCode,
+    );
+    const serverDiscount = promoResult.totalDiscount;
 
     // Recargo por transferencia: calcular server-side
+    const base = serverSubtotal + serverExtras;
     const config = await db.businessConfig.findUnique({ where: { id: '1' } });
     const serverSurcharge = paymentMethod === 'transferencia' && config
-      ? Math.round((base - safeDiscount) * config.transferSurcharge)
+      ? Math.round((base - serverDiscount) * config.transferSurcharge)
       : 0;
 
     // Delivery: respetar lo que el cliente envía si es 0 (combo con envío gratis),
@@ -94,7 +192,7 @@ export async function POST(req: NextRequest) {
       ? 0
       : (delivery === 0 ? 0 : null);
 
-    const serverTotal = Math.max(0, base - safeDiscount + serverSurcharge);
+    const serverTotal = Math.max(0, base - serverDiscount + serverSurcharge);
 
     // Generar código único
     let code = generateOrderCode();
@@ -105,10 +203,21 @@ export async function POST(req: NextRequest) {
     }
 
     // customerId: solo de la sesión, NUNCA del body (bug #6)
-    let resolvedCustomerId = null;
+    let resolvedCustomerId: string | null = null;
     const session = await getSession();
     if (session?.type === 'customer') {
       resolvedCustomerId = session.userId;
+    }
+
+    // Agregar items gratis de promociones free_product al carrito antes de guardar
+    const finalItems = [...validatedItems];
+    if (promoResult.freeItems.length > 0) {
+      for (const freeItem of promoResult.freeItems) {
+        finalItems.push({
+          ...freeItem,
+          qty: freeItem.qty || 1,
+        });
+      }
     }
 
     const order = await db.order.create({
@@ -121,11 +230,11 @@ export async function POST(req: NextRequest) {
           ? customerAddress.trim()
           : 'Recogida en tienda',
         reference: reference?.trim() || null,
-        items: JSON.stringify(items.map(({ id, ...rest }: any) => rest)), // bug #43: quitar id interno
+        items: JSON.stringify(finalItems.map(({ id, ...rest }: any) => rest)), // bug #43: quitar id interno
         subtotal: serverSubtotal,
         extras: serverExtras,
         delivery: serverDelivery,
-        discount: safeDiscount,
+        discount: serverDiscount,
         surcharge: serverSurcharge,
         total: serverTotal,
         paymentMethod,

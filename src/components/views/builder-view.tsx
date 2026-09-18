@@ -24,7 +24,10 @@ export function BuilderView() {
   ]);
 
   const currentSize = sizes.find((s) => s.id === size)!;
-  const borderPrice = currentSize.basePrice * 0.20;
+  // FASE 2.8: Precio de borde de queso como delta absoluto por tamaño (spec del negocio).
+  // Antes: borderPrice = basePrice * 0.20 (incorrecto, no coincidía con la spec).
+  // Ahora: borderPrice = borderDelta (ej: 150 para pequeñas, 500 para familiar, 550 para extra)
+  const borderPrice = currentSize.borderDelta ?? 0;
 
   // El queso está incluido en el precio base. Solo cobramos como extra las porciones
   // adicionales a 1 (bug #11: misma pizza con precios distintos menú vs builder).

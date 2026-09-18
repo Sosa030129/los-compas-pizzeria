@@ -61,7 +61,9 @@ export type PizzaSize =
 export interface SizeOption {
   id: PizzaSize;
   label: string;
-  basePrice: number;
+  basePrice: number;       // precio "pizza de queso"
+  borderDelta?: number;   // extra por "borde de queso" (precio borde = basePrice + borderDelta)
+  order?: number;
 }
 
 export type IngredientQty = 'normal' | 'doble' | 'triple';
