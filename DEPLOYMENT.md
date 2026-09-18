@@ -95,3 +95,5 @@ bun run db:push    # Actualizar base de datos
 bun run db:generate # Regenerar cliente Prisma
 bun scripts/init-prod.sh  # Inicializar BD en producción
 ```
+
+<!-- SSH deploy key setup verified 2026-09-18T00:21:33Z -->
