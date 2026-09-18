@@ -85,12 +85,33 @@ export interface Product {
   emoji: string;
   price: number;
   available: boolean;
-  prepTime: number; // minutos
+  // FASE C: prepTime eliminado (no se usa en lógica de negocio)
   isPizza?: boolean;
   defaultSize?: PizzaSize;
-  defaultIngredients?: string[];
+  defaultIngredients?: string[];   // ingredientes incluidos en el precio base (1 porción gratis)
+  includedIngredients?: string[];   // FASE E: ingredientes OBLIGATORIOS en ofertas (no eliminables)
   isCombo?: boolean;
   comboItems?: string[];
+  isOffer?: boolean;               // FASE E: marca si es una oferta publicada
+  offerStatus?: OfferStatus;       // FASE E: estado del ciclo de vida
+}
+
+// FASE E: estados del ciclo de publicación de ofertas
+export type OfferStatus = 'DRAFT' | 'PREVIEW' | 'PUBLISHED' | 'ARCHIVED';
+
+// FASE E: entidad Offer (ligada a un producto pizza con ingredientes obligatorios)
+export interface Offer {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  productId: string;               // pizza base
+  includedIngredients: string[];   // ingredientes obligatorios (no eliminables)
+  status: OfferStatus;
+  discountPercent?: number;        // opcional: descuento sobre el total
+  publishedAt?: number;            // timestamp cuando se publicó
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface CartItemIngredient {
@@ -220,6 +241,9 @@ export interface AppState {
   // Promociones
   promotions: Promotion[];
   appliedPromoCode: string | null;
+
+  // FASE E: Ofertas (entidad separada, con includedIngredients obligatorios)
+  offers: Offer[];
 
   // Carrito actual
   cart: CartItem[];

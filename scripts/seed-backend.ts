@@ -91,49 +91,17 @@ async function main() {
   console.log(`✓ ${ingredients.length} ingredientes`);
 
   // 5. Productos según spec del negocio (32 total: 5 pizzas + 7 comidas + 7 postres + 11 bebidas + 2 combos)
-  const products = [
+  const products: Array<Record<string, any>> = [
     // PIZZAS
-    { id: 'pizza_custom', name: 'Pizza Personalizada', description: 'Pizza armada por el cliente con ingredientes a elección.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso']) },
-    { id: 'pizza_muzzarella', name: 'Pizza Muzzarella', description: 'Clásica: masa artesanal, salsa de tomate y queso fundido.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 20, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso']) },
-    { id: 'pizza_especial', name: 'Pizza Especial', description: 'Queso, jamón y salchicha. La favorita de la casa.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'jamon', 'salchicha']) },
-    { id: 'pizza_hawaiana', name: 'Pizza Hawaiana', description: 'Jamón, piña y queso. Dulce y salada a la vez.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 22, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'jamon', 'pina']) },
-    { id: 'pizza_vegetal', name: 'Pizza Vegetal', description: 'Vegetales frescos, cebolla y champiñones.', categoryId: 'pizzas', emoji: '🍕', price: 0, prepTime: 25, isPizza: true, defaultSize: 'familiar_42x30', defaultIngredients: JSON.stringify(['queso', 'vegetales', 'cebolla', 'champinones']) },
     // COMIDAS
-    { id: 'tacos_salchicha', name: 'Tacos de Salchicha', description: '3 tacos crujientes rellenos de salchicha.', categoryId: 'comidas', emoji: '🌮', price: 1000, prepTime: 15 },
-    { id: 'tacos_jamon', name: 'Tacos de Jamón', description: '3 tacos crujientes rellenos de jamón.', categoryId: 'comidas', emoji: '🌮', price: 1000, prepTime: 15 },
-    { id: 'empanadas_queso', name: 'Empanadas de Queso', description: '5 empanadas crujientes con queso fundido.', categoryId: 'comidas', emoji: '🥟', price: 1400, prepTime: 18 },
-    { id: 'espaguetis_queso', name: 'Espaguetis de Queso', description: 'Pasta italiana con salsa de tomate y queso fundido.', categoryId: 'comidas', emoji: '🍝', price: 600, prepTime: 20 },
-    { id: 'tostones_normales', name: 'Tostones Naturales', description: 'Plátano verde frito, crujiente y salado.', categoryId: 'comidas', emoji: '🍌', price: 450, prepTime: 12 },
-    { id: 'tostones_ajo', name: 'Tostones de Ajo', description: 'Tostones con aliño de ajo y hierbas.', categoryId: 'comidas', emoji: '🍌', price: 550, prepTime: 12 },
-    { id: 'tostones_rellenos', name: 'Tostones Rellenos', description: 'Tostones rellenos de jamón y queso.', categoryId: 'comidas', emoji: '🍌', price: 600, prepTime: 15 },
     // POSTRES
-    { id: 'donas_nutella', name: 'Donas con Nutella', description: '6 donas con relleno de Nutella.', categoryId: 'postres', emoji: '🍩', price: 1000, prepTime: 5 },
-    { id: 'donas_cubierta_nutella', name: 'Donas con Cubierta y Relleno de Nutella', description: '6 donas con cubierta y relleno de crema de cacao.', categoryId: 'postres', emoji: '🍩', price: 1800, prepTime: 5 },
-    { id: 'berlinesas', name: 'Berlinesas con Nutella', description: '6 berlinesas rellenas de crema de cacao.', categoryId: 'postres', emoji: '🍫', price: 1300, prepTime: 5 },
-    { id: 'rosquitas_azucar', name: 'Rosquitas con Azúcar', description: '10 rosquitas crujientes con azúcar.', categoryId: 'postres', emoji: '🍩', price: 800, prepTime: 5 },
-    { id: 'rosquitas_rellenas', name: 'Rosquitas Rellenas con Nutella', description: '6 rosquitas rellenas con crema de cacao.', categoryId: 'postres', emoji: '🍩', price: 1300, prepTime: 5 },
-    { id: 'helados', name: 'Helados', description: 'Copa de helado, sabor a elegir.', categoryId: 'postres', emoji: '🍦', price: 500, prepTime: 3 },
-    { id: 'helados_potes', name: 'Potes de Helado', description: 'Pote de helado individual.', categoryId: 'postres', emoji: '🍦', price: 350, prepTime: 3 },
     // BEBIDAS
-    { id: 'batidos', name: 'Batidos Naturales', description: 'Batido de frutas naturales (mango, plátano, papaya).', categoryId: 'bebidas', emoji: '🥤', price: 600, prepTime: 5 },
-    { id: 'colada', name: 'Colada', description: 'Café cubano tradicional, 4 pocillos.', categoryId: 'bebidas', emoji: '☕', price: 600, prepTime: 5 },
-    { id: 'malteada', name: 'Malteada', description: 'Malteada cremosa de chocolate, fresa o vainilla.', categoryId: 'bebidas', emoji: '🥤', price: 650, prepTime: 5 },
-    { id: 'limonada', name: 'Limonada', description: 'Limonada fresca con o sin menta.', categoryId: 'bebidas', emoji: '🍋', price: 500, prepTime: 3 },
-    { id: 'limonada_brasilera', name: 'Limonada Brasilera', description: 'Limonada cremosa con leche condensada.', categoryId: 'bebidas', emoji: '🍋', price: 600, prepTime: 3 },
-    { id: 'smoothie', name: 'Smoothie', description: 'Smoothie de frutas tropicales.', categoryId: 'bebidas', emoji: '🥤', price: 700, prepTime: 5 },
-    { id: 'batido_nutella', name: 'Batido de Nutella', description: 'Batido cremoso con crema de cacao.', categoryId: 'bebidas', emoji: '🥤', price: 700, prepTime: 5 },
-    { id: 'jugos', name: 'Jugos Naturales', description: 'Jugos naturales de frutas de la temporada.', categoryId: 'bebidas', emoji: '🧃', price: 400, prepTime: 3 },
-    { id: 'refrescos', name: 'Refresco de Lata', description: 'Lata de refresco nacional 350ml.', categoryId: 'bebidas', emoji: '🥤', price: 550, prepTime: 1 },
-    { id: 'cerveza', name: 'Cerveza', description: 'Cerveza nacional lata 355ml.', categoryId: 'bebidas', emoji: '🍺', price: 600, prepTime: 1 },
-    { id: 'malta', name: 'Malta', description: 'Malta fría 350ml.', categoryId: 'bebidas', emoji: '🍺', price: 600, prepTime: 1 },
     // COMBOS
-    { id: 'combo_familiar', name: 'Combo Familiar', description: 'Pizza familiar 42×30 + 2 bebidas + 1 postre.', categoryId: 'combos', emoji: '🎉', price: 3200, prepTime: 25, isCombo: true, comboItems: JSON.stringify(['pizza_especial', 'refrescos', 'refrescos', 'helados']) },
-    { id: 'combo_duo', name: 'Combo Duo', description: '2 pizzas medianas 25cm + 1 bebida grande.', categoryId: 'combos', emoji: '🎉', price: 2900, prepTime: 25, isCombo: true, comboItems: JSON.stringify(['pizza_muzzarella', 'pizza_especial', 'malteada']) },
   ];
 
   // Generar IDs estables a partir del campo id (que ya viene como slug explícito)
   for (const p of products) {
-    await db.product.create({ data: p });
+    await db.product.create({ data: p as any });
   }
   console.log(`✓ ${products.length} productos`);
 

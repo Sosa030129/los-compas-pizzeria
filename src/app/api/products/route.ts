@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, name, description, categoryId, emoji, price, prepTime, isPizza, isCombo, defaultSize, defaultIngredients, comboItems, available } = body;
+    const {
+      id, name, description, categoryId, emoji, price,
+      isPizza, isCombo, defaultSize, defaultIngredients, comboItems, available,
+    } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ ok: false, error: 'Nombre obligatorio' }, { status: 400 });
@@ -34,7 +37,6 @@ export async function POST(req: NextRequest) {
         categoryId: categoryId || 'pizzas',
         emoji: emoji || '🍕',
         price: Math.max(0, Number(price) || 0),
-        prepTime: Math.max(0, Number(prepTime) || 15),
         isPizza: isPizza || false,
         isCombo: isCombo || false,
         defaultSize: defaultSize || null,

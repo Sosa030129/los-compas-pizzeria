@@ -129,6 +129,7 @@ const initialState: AppState = {
   combos: COMBOS,
   promotions: PROMOTIONS,
   appliedPromoCode: null,
+  offers: [], // FASE E: se hidrata desde backend
   cart: [],
   orders: [],
   lastCustomerPhone: null,
@@ -582,7 +583,17 @@ export const useStore = create<Store>()(
           method: exists ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(p),
-        }).catch(() => {});
+        }).then(async (res) => {
+          // FASE D2: manejar errores HTTP igual que saveProduct
+          if (!res.ok) {
+            const r = await res.json().catch(() => ({}));
+            toast.error(r.error || 'Error al guardar promoción en el servidor');
+            hydrateFromServer(); // Rollback
+          }
+        }).catch(() => {
+          toast.error('Error de red al guardar promoción');
+          hydrateFromServer();
+        });
       },
 
       togglePromotionActive: (id) => {
@@ -902,6 +913,7 @@ export async function hydrateFromServer(): Promise<boolean> {
     if (Array.isArray(c.ingredients)) patch.ingredients = c.ingredients;
     if (Array.isArray(c.sizes)) patch.sizes = c.sizes;
     if (Array.isArray(c.promotions)) patch.promotions = c.promotions;
+    if (Array.isArray(c.offers)) patch.offers = c.offers; // FASE E
     if (Array.isArray(c.whatsappNumbers)) patch.whatsapp = c.whatsappNumbers;
     if (c.config) patch.config = c.config;
 

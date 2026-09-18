@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, hydrateFromServer } from '@/lib/store';
 import { useConfirm } from '@/components/confirm-provider';
 import { canAccessView, hasPermission, isTimeRangeValid } from '@/lib/auth';
 import { motion } from 'framer-motion';
@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Package, Salad, Users, MessageCircle, Settings, LogOut,
   ShoppingBag, Plus, Pencil, Trash2, Save, AlertTriangle,
   Bike, History, Tags, Percent, Download, Upload, HelpCircle, RotateCcw,
+  Sparkles, Eye, Send, Archive,
 } from 'lucide-react';
 import { StatsCharts } from '@/components/stats-charts';
 import {
@@ -17,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import type { Product, Employee, WhatsAppNumber, Permission, Role, Ingredient, Promotion, PromotionType } from '@/lib/types';
 
-type AdminTab = 'dashboard' | 'orders' | 'products' | 'ingredients' | 'categories' | 'sizes' | 'promotions' | 'combos' | 'employees' | 'whatsapp' | 'config' | 'backup' | 'help' | 'logs';
+type AdminTab = 'dashboard' | 'orders' | 'products' | 'ingredients' | 'categories' | 'sizes' | 'promotions' | 'offers' | 'combos' | 'employees' | 'whatsapp' | 'config' | 'backup' | 'help' | 'logs';
 
 export function AdminView() {
   const currentEmployee = useStore((s) => s.currentEmployee);
@@ -48,6 +49,7 @@ export function AdminView() {
     { id: 'categories', label: 'Categorías', icon: Tags },
     { id: 'sizes', label: 'Tamaños', icon: Percent },
     { id: 'promotions', label: 'Promociones', icon: Percent },
+    { id: 'offers', label: 'Ofertas', icon: Sparkles },
     { id: 'combos', label: 'Combos', icon: ShoppingBag },
     { id: 'employees', label: 'Empleados', icon: Users },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -109,6 +111,7 @@ export function AdminView() {
         {tab === 'sizes' && <SizesTab />}
         {tab === 'promotions' && <PromotionsTab />}
         {tab === 'combos' && <CombosTab />}
+        {tab === 'offers' && <OffersTab />}
         {tab === 'employees' && <EmployeesTab />}
         {tab === 'whatsapp' && <WhatsAppTab />}
         {tab === 'config' && <ConfigTab />}
@@ -520,7 +523,6 @@ function ProductsTab() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold leading-tight truncate">{p.name}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {p.isPizza ? 'Desde ' : ''}{formatCUP(p.price)} · {p.prepTime} min
                     </p>
                   </div>
                   <button
@@ -581,13 +583,15 @@ function ProductForm({ initial, onClose, onSave }: {
   onSave: (p: Product) => void;
 }) {
   const categories = useStore((s) => s.categories);
+  const allIngredients = useStore((s) => s.ingredients);
   const [name, setName] = useState(initial?.name || '');
   const [description, setDescription] = useState(initial?.description || '');
   const [category, setCategory] = useState(initial?.category || categories[0]?.id || 'pizzas');
   const [emoji, setEmoji] = useState(initial?.emoji || '🍕');
   const [price, setPrice] = useState(initial?.price || 0);
-  const [prepTime, setPrepTime] = useState(initial?.prepTime || 15);
   const [isPizza, setIsPizza] = useState(initial?.isPizza || false);
+  const [available, setAvailable] = useState(initial?.available ?? true); // FASE D: preservar estado al editar
+  const [defaultIngredients, setDefaultIngredients] = useState<string[]>(initial?.defaultIngredients || ['queso']); // FASE D: editable
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
@@ -612,16 +616,58 @@ function ProductForm({ initial, onClose, onSave }: {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <FormRow label="Precio (CUP)">
-              <input type="number" value={price} onChange={(e) => setPrice(parseInt(e.target.value) || 0)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+              <input
+                type="number"
+                value={price}
+                disabled={isPizza}
+                onChange={(e) => setPrice(parseInt(e.target.value) || 0)}
+                className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm disabled:opacity-50"
+                placeholder={isPizza ? 'Se calcula por tamaño' : ''}
+              />
             </FormRow>
-            <FormRow label="Tiempo prep (min)">
-              <input type="number" value={prepTime} onChange={(e) => setPrepTime(parseInt(e.target.value) || 0)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            <FormRow label="Disponible">
+              <button
+                type="button"
+                onClick={() => setAvailable(!available)}
+                className={`w-full px-3 py-2 rounded-xl font-bold text-sm transition ${available ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}
+              >
+                {available ? '✅ Disponible' : '❌ Agotado'}
+              </button>
             </FormRow>
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={isPizza} onChange={(e) => setIsPizza(e.target.checked)} />
             Es una pizza (constructor visual)
           </label>
+
+          {/* FASE D: Selector de ingredientes incluidos (1 porción gratis en el precio base) */}
+          {isPizza && (
+            <div className="bg-secondary/30 border border-border rounded-xl p-3">
+              <p className="text-[11px] font-bold text-muted-foreground mb-2">
+                Ingredientes incluidos (1 porción gratis en precio base)
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {allIngredients.filter((i) => i.available).map((ing) => {
+                  const checked = defaultIngredients.includes(ing.id);
+                  return (
+                    <button
+                      key={ing.id}
+                      type="button"
+                      onClick={() => {
+                        setDefaultIngredients((prev) =>
+                          prev.includes(ing.id) ? prev.filter((id) => id !== ing.id) : [...prev, ing.id]
+                        );
+                      }}
+                      className={`text-left px-2 py-1.5 rounded-lg text-[11px] flex items-center gap-1 transition ${checked ? 'bg-primary text-primary-foreground' : 'bg-background border border-border'}`}
+                    >
+                      <span>{ing.emoji}</span>
+                      <span className="truncate">{ing.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-2 pt-2">
             <button onClick={onClose} className="flex-1 bg-secondary py-2.5 rounded-xl font-bold text-sm">
@@ -639,12 +685,11 @@ function ProductForm({ initial, onClose, onSave }: {
                   description: description.trim(),
                   category,
                   emoji,
-                  price: isPizza ? 0 : price,
-                  available: true,
-                  prepTime,
+                  price: isPizza ? 0 : Math.max(0, price), // FASE D: solo descarta si isPizza, con feedback visual
+                  available, // FASE D: preservar estado disponible
                   isPizza,
                   defaultSize: isPizza ? 'familiar_42x30' : undefined,
-                  defaultIngredients: isPizza ? ['queso'] : undefined,
+                  defaultIngredients: isPizza ? defaultIngredients : undefined, // FASE D: configurable
                 });
               }}
               className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm"
@@ -1944,7 +1989,6 @@ function ComboForm({
                   emoji,
                   price,
                   available: true,
-                  prepTime: 25,
                   isCombo: true,
                   comboItems,
                 });
@@ -1955,6 +1999,439 @@ function ComboForm({
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== FASE E: Ofertas =====
+const OFFER_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  'DRAFT': { label: 'Borrador', color: '#8a7a5a' },
+  'PREVIEW': { label: 'Vista previa', color: '#c4a060' },
+  'PUBLISHED': { label: 'Publicada', color: '#7ab860' },
+  'ARCHIVED': { label: 'Archivada', color: '#7a1f1f' },
+};
+
+function OffersTab() {
+  const offers = useStore((s) => s.offers);
+  const products = useStore((s) => s.products);
+  const ingredients = useStore((s) => s.ingredients);
+  const sizes = useStore((s) => s.sizes);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [previewing, setPreviewing] = useState<any>(null);
+  const [confirming, setConfirming] = useState<any>(null);
+  const confirm = useConfirm();
+  const [refreshFlag, setRefreshFlag] = useState(0);
+
+  // Recargar ofertas del backend cuando cambie refreshFlag
+  useEffect(() => {
+    if (refreshFlag > 0) {
+      hydrateFromServer();
+    }
+  }, [refreshFlag]);
+
+  const callApi = async (method: string, body: any) => {
+    const res = await fetch('/api/offers', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      toast.error(data.error || 'Error en la operación');
+      return null;
+    }
+    setRefreshFlag((x) => x + 1);
+    return data.offer;
+  };
+
+  const handleSaveDraft = async (offerData: any) => {
+    const method = editing ? 'PUT' : 'POST';
+    const body = editing ? { id: editing.id, ...offerData } : offerData;
+    const saved = await callApi(method, body);
+    if (saved) {
+      toast.success(editing ? 'Oferta actualizada' : 'Borrador guardado');
+      setShowForm(false);
+      setEditing(null);
+    }
+  };
+
+  const handleStatusChange = async (offer: any, newStatus: string) => {
+    if (newStatus === 'PUBLISHED') {
+      setConfirming(offer);
+      return;
+    }
+    const ok = await confirm({
+      title: `Cambiar estado a "${OFFER_STATUS_LABELS[newStatus].label}"`,
+      description: `¿Confirmas la acción sobre "${offer.name}"?`,
+      confirmText: 'Sí, continuar',
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/offers/${offer.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      toast.error(data.error || 'Error');
+      return;
+    }
+    toast.success(`Oferta ${OFFER_STATUS_LABELS[newStatus].label.toLowerCase()}`);
+    setRefreshFlag((x) => x + 1);
+  };
+
+  const handleConfirmPublish = async () => {
+    if (!confirming) return;
+    const res = await fetch(`/api/offers/${confirming.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'PUBLISHED' }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      toast.error(data.error || 'Error publicando');
+      return;
+    }
+    toast.success('Oferta publicada correctamente');
+    setConfirming(null);
+    setRefreshFlag((x) => x + 1);
+  };
+
+  const handleDelete = async (offer: any) => {
+    const ok = await confirm({
+      title: 'Eliminar oferta',
+      description: `¿Eliminar "${offer.name}"? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/offers/${offer.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.ok) {
+      toast.error(data.error || 'Error');
+      return;
+    }
+    toast.success('Oferta eliminada');
+    setRefreshFlag((x) => x + 1);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="font-cartoon text-base">Ofertas</h2>
+          <p className="text-[11px] text-muted-foreground">Pizzas con ingredientes obligatorios</p>
+        </div>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-primary text-primary-foreground px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5">
+          <Plus size={14} /> Nueva oferta
+        </button>
+      </div>
+
+      {offers.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Sparkles size={32} className="mx-auto mb-2 opacity-50" />
+          <p className="text-sm">Aún no hay ofertas creadas</p>
+          <p className="text-[11px] mt-1">Crea una pizza con ingredientes obligatorios que el cliente no puede quitar.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {offers.map((o: any) => {
+            const product = products.find((p) => p.id === o.productId);
+            const st = OFFER_STATUS_LABELS[o.status] || OFFER_STATUS_LABELS.DRAFT;
+            const includedNames = (o.includedIngredients || []).map((id: string) => {
+              const ing = ingredients.find((i) => i.id === id);
+              return ing ? ing.name : id;
+            });
+            return (
+              <div key={o.id} className="cartoon-border bg-card rounded-2xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xl">{o.emoji}</span>
+                      <h3 className="font-cartoon text-sm">{o.name}</h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: `${st.color}33`, color: st.color }}>
+                        {st.label}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {product ? `${product.emoji} ${product.name}` : 'Producto eliminado'} · {includedNames.length} incluidos: {includedNames.join(', ')}
+                    </p>
+                    {o.discountPercent > 0 && (
+                      <p className="text-[10px] text-primary mt-0.5">Descuento: {o.discountPercent}%</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1 mt-2 flex-wrap">
+                  <button
+                    onClick={() => { setEditing(o); setShowForm(true); }}
+                    className="text-[10px] bg-secondary px-2 py-1 rounded-full font-bold flex items-center gap-1"
+                  >
+                    <Pencil size={10} /> Editar
+                  </button>
+                  {o.status === 'DRAFT' && (
+                    <button
+                      onClick={() => handleStatusChange(o, 'PREVIEW')}
+                      className="text-[10px] bg-secondary px-2 py-1 rounded-full font-bold flex items-center gap-1"
+                    >
+                      <Eye size={10} /> Vista previa
+                    </button>
+                  )}
+                  {o.status === 'PREVIEW' && (
+                    <>
+                      <button
+                        onClick={() => setPreviewing(o)}
+                        className="text-[10px] bg-secondary px-2 py-1 rounded-full font-bold flex items-center gap-1"
+                      >
+                        <Eye size={10} /> Ver preview
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(o, 'DRAFT')}
+                        className="text-[10px] bg-secondary px-2 py-1 rounded-full font-bold"
+                      >
+                        ← Volver a borrador
+                      </button>
+                    </>
+                  )}
+                  {o.status === 'PREVIEW' && (
+                    <button
+                      onClick={() => handleStatusChange(o, 'PUBLISHED')}
+                      className="text-[10px] bg-primary text-primary-foreground px-2 py-1 rounded-full font-bold flex items-center gap-1"
+                    >
+                      <Send size={10} /> Publicar
+                    </button>
+                  )}
+                  {o.status === 'PUBLISHED' && (
+                    <button
+                      onClick={() => handleStatusChange(o, 'ARCHIVED')}
+                      className="text-[10px] bg-secondary px-2 py-1 rounded-full font-bold flex items-center gap-1"
+                    >
+                      <Archive size={10} /> Archivar
+                    </button>
+                  )}
+                  {o.status === 'ARCHIVED' && (
+                    <button
+                      onClick={() => handleStatusChange(o, 'DRAFT')}
+                      className="text-[10px] bg-secondary px-2 py-1 rounded-full font-bold"
+                    >
+                      ♻️ Reabrir
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(o)}
+                    className="text-[10px] text-destructive hover:bg-destructive/10 px-2 py-1 rounded-full font-bold flex items-center gap-1"
+                  >
+                    <Trash2 size={10} /> Eliminar
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showForm && (
+        <OfferForm
+          initial={editing}
+          onClose={() => { setShowForm(false); setEditing(null); }}
+          onSave={handleSaveDraft}
+        />
+      )}
+
+      {previewing && (
+        <OfferPreview
+          offer={previewing}
+          onClose={() => setPreviewing(null)}
+        />
+      )}
+
+      {confirming && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl p-5 max-w-sm border-2 border-primary/40">
+            <h3 className="font-cartoon text-base mb-2">¿Confirmar publicación?</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              La oferta <strong>{confirming.name}</strong> será visible para todos los clientes.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirming(null)} className="flex-1 bg-secondary py-2.5 rounded-xl font-bold text-sm">
+                Cancelar
+              </button>
+              <button onClick={handleConfirmPublish} className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-1">
+                <Send size={14} /> Publicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OfferForm({ initial, onClose, onSave }: {
+  initial: any;
+  onClose: () => void;
+  onSave: (data: any) => void;
+}) {
+  const products = useStore((s) => s.products).filter((p) => p.isPizza && p.available);
+  const ingredients = useStore((s) => s.ingredients).filter((i) => i.available);
+  const [name, setName] = useState(initial?.name || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [emoji, setEmoji] = useState(initial?.emoji || '🍕');
+  const [productId, setProductId] = useState(initial?.productId || products[0]?.id || '');
+  const [included, setIncluded] = useState<string[]>(initial?.includedIngredients || []);
+  const [discountPercent, setDiscountPercent] = useState(initial?.discountPercent || 0);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+      <div className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-border max-h-[85vh] overflow-y-auto">
+        <h3 className="font-cartoon text-base mb-3">{initial ? 'Editar oferta' : 'Nueva oferta'}</h3>
+        <div className="space-y-3">
+          <FormRow label="Nombre de la oferta">
+            <input value={name} onChange={(e) => setName(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" placeholder="Ej: Promo Hawaiana" />
+          </FormRow>
+          <FormRow label="Descripción">
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm min-h-[60px]" />
+          </FormRow>
+          <div className="grid grid-cols-3 gap-2">
+            <FormRow label="Emoji">
+              <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            </FormRow>
+            <FormRow label="Descuento %">
+              <input type="number" min="0" max="100" value={discountPercent} onChange={(e) => setDiscountPercent(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+            </FormRow>
+            <FormRow label="Pizza base">
+              <select value={productId} onChange={(e) => setProductId(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm">
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </FormRow>
+          </div>
+          <div className="bg-secondary/30 border border-border rounded-xl p-3">
+            <p className="text-[11px] font-bold text-muted-foreground mb-2">
+              Ingredientes OBLIGATORIOS (no eliminables por el cliente)
+            </p>
+            {included.length === 0 && (
+              <p className="text-[10px] text-destructive mb-2">⚠️ Debes seleccionar al menos 1</p>
+            )}
+            <div className="grid grid-cols-2 gap-1.5">
+              {ingredients.map((ing) => {
+                const checked = included.includes(ing.id);
+                return (
+                  <button
+                    key={ing.id}
+                    type="button"
+                    onClick={() => setIncluded((prev) => prev.includes(ing.id) ? prev.filter((id) => id !== ing.id) : [...prev, ing.id])}
+                    className={`text-left px-2 py-1.5 rounded-lg text-[11px] flex items-center gap-1 transition ${checked ? 'bg-primary text-primary-foreground' : 'bg-background border border-border'}`}
+                  >
+                    <span>{ing.emoji}</span>
+                    <span className="truncate">{ing.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button onClick={onClose} className="flex-1 bg-secondary py-2.5 rounded-xl font-bold text-sm">Cancelar</button>
+            <button
+              onClick={() => {
+                if (!name.trim()) { toast.error('Nombre obligatorio'); return; }
+                if (!productId) { toast.error('Debes elegir una pizza'); return; }
+                if (included.length === 0) { toast.error('Debes incluir al menos 1 ingrediente'); return; }
+                onSave({ name: name.trim(), description: description.trim(), emoji, productId, includedIngredients: included, discountPercent });
+              }}
+              className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-1"
+            >
+              <Save size={14} /> Guardar borrador
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OfferPreview({ offer, onClose }: { offer: any; onClose: () => void }) {
+  const products = useStore((s) => s.products);
+  const ingredients = useStore((s) => s.ingredients);
+  const sizes = useStore((s) => s.sizes);
+  const [selectedSize, setSelectedSize] = useState<string>(sizes[0]?.id || '');
+  const product = products.find((p) => p.id === offer.productId);
+  const size = sizes.find((s) => s.id === selectedSize);
+  if (!product || !size) return null;
+
+  // Cálculo: precio base + included ingredients + borde opcional (en preview mostramos sin borde)
+  const includedPrice = (offer.includedIngredients || []).reduce((sum: number, id: string) => {
+    const ing = ingredients.find((i) => i.id === id);
+    if (!ing) return sum;
+    // Como no podemos importar getIngredientPrice aquí sin refactorizar, usamos priceBySize directo
+    const p = (ing.priceBySize as any)?.[selectedSize] || 0;
+    return sum + p;
+  }, 0);
+  const total = size.basePrice + includedPrice;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+      <div className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-primary/40 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-cartoon text-base">Vista previa</h3>
+          <button onClick={onClose} className="text-muted-foreground text-xs">✕ Cerrar</button>
+        </div>
+
+        <div className="text-center mb-3">
+          <span className="text-5xl">{offer.emoji}</span>
+          <h2 className="font-cartoon text-base mt-1">{offer.name}</h2>
+          <p className="text-[11px] text-muted-foreground">{offer.description}</p>
+        </div>
+
+        <FormRow label="Tamaño">
+          <select value={selectedSize} onChange={(e) => setSelectedSize(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm">
+            {sizes.map((s) => <option key={s.id} value={s.id}>{s.label} - {s.basePrice.toLocaleString('es-CU')} CUP</option>)}
+          </select>
+        </FormRow>
+
+        <div className="bg-secondary/30 border border-border rounded-xl p-3 mt-3">
+          <p className="text-[11px] font-bold text-muted-foreground mb-2">Ingredientes incluidos (obligatorios)</p>
+          <div className="space-y-1">
+            {(offer.includedIngredients || []).map((id: string) => {
+              const ing = ingredients.find((i) => i.id === id);
+              if (!ing) return null;
+              const p = (ing.priceBySize as any)?.[selectedSize] || 0;
+              return (
+                <div key={id} className="flex items-center justify-between text-[11px]">
+                  <span>{ing.emoji} {ing.name} 🔒</span>
+                  <span className="text-muted-foreground">{p.toLocaleString('es-CU')} CUP</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 mt-3 space-y-1">
+          <div className="flex justify-between text-[11px] text-muted-foreground">
+            <span>Precio base ({size.label})</span>
+            <span>{size.basePrice.toLocaleString('es-CU')} CUP</span>
+          </div>
+          <div className="flex justify-between text-[11px] text-muted-foreground">
+            <span>+ Ingredientes incluidos</span>
+            <span>{includedPrice.toLocaleString('es-CU')} CUP</span>
+          </div>
+          {offer.discountPercent > 0 && (
+            <div className="flex justify-between text-[11px] text-primary">
+              <span>- Descuento {offer.discountPercent}%</span>
+              <span>-{Math.round((size.basePrice + includedPrice) * offer.discountPercent / 100).toLocaleString('es-CU')} CUP</span>
+            </div>
+          )}
+          <div className="flex justify-between font-cartoon text-sm text-primary border-t border-primary/30 pt-1 mt-1">
+            <span>Total</span>
+            <span>{(total - Math.round(total * offer.discountPercent / 100)).toLocaleString('es-CU')} CUP</span>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-muted-foreground mt-2 text-center">
+          💡 Esta es la misma lógica que verá el cliente al abrir la oferta.
+        </p>
       </div>
     </div>
   );

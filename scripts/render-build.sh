@@ -150,11 +150,6 @@ function buildPriceBySize(small, family) {
 
     // 5. Productos (pizzas, comidas, postres, bebidas, combos)
     const allProducts = [
-      ...PIZZAS.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],prepTime:p[6],categoryId:'pizzas',isPizza:true,defaultSize:p[7],defaultIngredients:JSON.stringify(p[8])})),
-      ...COMIDAS.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],prepTime:p[6],categoryId:'comidas'})),
-      ...POSTRES.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],prepTime:p[6],categoryId:'postres'})),
-      ...BEBIDAS.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],prepTime:p[6],categoryId:'bebidas'})),
-      ...COMBOS.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],prepTime:p[6],categoryId:'combos',isCombo:true,comboItems:JSON.stringify(p[7])})),
     ];
     for (const p of allProducts) {
       const existing = await db.product.findUnique({where:{id:p.id}});

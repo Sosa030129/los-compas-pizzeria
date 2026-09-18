@@ -92,7 +92,6 @@ model Product {
   emoji             String   @default("🍕")
   price             Int      @default(0)
   available         Boolean  @default(true)
-  prepTime          Int      @default(15) // minutos
   isPizza           Boolean  @default(false)
   isCombo           Boolean  @default(false)
   defaultSize       String?  // si isPizza: size id
@@ -103,6 +102,27 @@ model Product {
   category          Category @relation(fields: [categoryId], references: [id])
 
   @@index([categoryId])
+}
+
+// ===== 5b. OFERTAS ===== (FASE E)
+// Una oferta envuelve una pizza + ingredientes obligatorios (includedIngredients).
+// Ciclo de vida: DRAFT → PREVIEW → PUBLISHED → ARCHIVED
+// Solo las PUBLISHED son visibles a clientes en /api/catalog.
+model Offer {
+  id                  String   @id @default(cuid())
+  name                String
+  description         String   @default("")
+  emoji               String   @default("🍕")
+  productId           String   // pizza base (Product.id con isPizza=true)
+  includedIngredients String   // JSON array de ingredient ids (obligatorios, no eliminables)
+  status              String   @default("DRAFT") // DRAFT | PREVIEW | PUBLISHED | ARCHIVED
+  discountPercent     Int      @default(0) // opcional: 0-100 descuento sobre total
+  publishedAt         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([status])
+  @@index([productId])
 }
 
 // ===== 6. TAMAÑOS DE PIZZA =====

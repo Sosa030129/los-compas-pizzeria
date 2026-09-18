@@ -19,7 +19,7 @@ export async function GET() {
   try {
     const [
       categories, products, ingredients, sizes, promotions,
-      whatsappNumbers, config,
+      whatsappNumbers, config, publishedOffers,
     ] = await Promise.all([
       db.category.findMany({ orderBy: { order: 'asc' } }),
       db.product.findMany({ orderBy: { name: 'asc' } }),
@@ -28,6 +28,8 @@ export async function GET() {
       db.promotion.findMany({ orderBy: { createdAt: 'desc' } }),
       db.whatsAppNumber.findMany(),
       db.businessConfig.findUnique({ where: { id: '1' } }),
+      // FASE E: solo ofertas PUBLISHED son visibles a clientes
+      db.offer.findMany({ where: { status: 'PUBLISHED' }, orderBy: { publishedAt: 'desc' } }),
     ]);
 
     // Parsear JSON embebido en cada item y mapear categoryId → category para compatibilidad con el frontend
@@ -60,6 +62,15 @@ export async function GET() {
       transferSurcharge: config.transferSurcharge,
     } : null;
 
+    // FASE E: parsear includedIngredients de cada oferta
+    const parsedOffers = publishedOffers.map((o) => ({
+      ...o,
+      includedIngredients: JSON.parse(o.includedIngredients || '[]'),
+      publishedAt: o.publishedAt ? new Date(o.publishedAt).getTime() : undefined,
+      createdAt: new Date(o.createdAt).getTime(),
+      updatedAt: new Date(o.updatedAt).getTime(),
+    }));
+
     return NextResponse.json({
       ok: true,
       catalog: {
@@ -70,6 +81,7 @@ export async function GET() {
         promotions,
         whatsappNumbers,
         config: parsedConfig,
+        offers: parsedOffers,
       },
     });
   } catch (e: any) {

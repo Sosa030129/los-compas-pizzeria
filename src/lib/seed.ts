@@ -78,7 +78,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍕',
     price: 0,
     available: true,
-    prepTime: 22,
     isPizza: true,
     defaultSize: 'familiar_42x30',
     defaultIngredients: ['queso'],
@@ -91,7 +90,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍕',
     price: 0,
     available: true,
-    prepTime: 20,
     isPizza: true,
     defaultSize: 'familiar_42x30',
     defaultIngredients: ['queso'],
@@ -104,7 +102,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍕',
     price: 0,
     available: true,
-    prepTime: 22,
     isPizza: true,
     defaultSize: 'familiar_42x30',
     defaultIngredients: ['queso', 'jamon', 'salchicha'],
@@ -117,7 +114,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍕',
     price: 0,
     available: true,
-    prepTime: 22,
     isPizza: true,
     defaultSize: 'familiar_42x30',
     defaultIngredients: ['queso', 'jamon', 'pina'],
@@ -130,7 +126,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍕',
     price: 0,
     available: true,
-    prepTime: 25,
     isPizza: true,
     defaultSize: 'familiar_42x30',
     defaultIngredients: ['queso', 'vegetales', 'cebolla', 'champinones'],
@@ -145,7 +140,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🌮',
     price: 1000,
     available: true,
-    prepTime: 15,
   },
   {
     id: 'tacos_jamon',
@@ -155,7 +149,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🌮',
     price: 1000,
     available: true,
-    prepTime: 15,
   },
   {
     id: 'empanadas_queso',
@@ -165,7 +158,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🥟',
     price: 1400,
     available: true,
-    prepTime: 18,
   },
   {
     id: 'espaguetis_queso',
@@ -175,7 +167,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍝',
     price: 600,
     available: true,
-    prepTime: 20,
   },
   {
     id: 'tostones_normales',
@@ -185,7 +176,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍌',
     price: 450,
     available: true,
-    prepTime: 12,
   },
   {
     id: 'tostones_ajo',
@@ -195,7 +185,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍌',
     price: 550,
     available: true,
-    prepTime: 12,
   },
   {
     id: 'tostones_rellenos',
@@ -205,7 +194,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍌',
     price: 600,
     available: true,
-    prepTime: 15,
   },
 
   // ===== POSTRES (7) =====
@@ -217,7 +205,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍩',
     price: 1000,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'donas_cubierta_nutella',
@@ -227,7 +214,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍩',
     price: 1800,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'berlinesas',
@@ -237,7 +223,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍫',
     price: 1300,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'rosquitas_azucar',
@@ -247,7 +232,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍩',
     price: 800,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'rosquitas_rellenas',
@@ -257,7 +241,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍩',
     price: 1300,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'helados',
@@ -267,7 +250,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍦',
     price: 500,
     available: true,
-    prepTime: 3,
   },
   {
     id: 'helados_potes',
@@ -277,7 +259,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍦',
     price: 350,
     available: true,
-    prepTime: 3,
   },
 
   // ===== BEBIDAS (11) =====
@@ -289,7 +270,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🥤',
     price: 600,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'colada',
@@ -299,7 +279,6 @@ export const PRODUCTS: Product[] = [
     emoji: '☕',
     price: 600,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'malteada',
@@ -309,7 +288,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🥤',
     price: 650,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'limonada',
@@ -319,7 +297,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍋',
     price: 500,
     available: true,
-    prepTime: 3,
   },
   {
     id: 'limonada_brasilera',
@@ -329,7 +306,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍋',
     price: 600,
     available: true,
-    prepTime: 3,
   },
   {
     id: 'smoothie',
@@ -339,7 +315,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🥤',
     price: 700,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'batido_nutella',
@@ -349,7 +324,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🥤',
     price: 700,
     available: true,
-    prepTime: 5,
   },
   {
     id: 'jugos',
@@ -359,7 +333,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🧃',
     price: 400,
     available: true,
-    prepTime: 3,
   },
   {
     id: 'refrescos',
@@ -369,7 +342,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🥤',
     price: 550,
     available: true,
-    prepTime: 1,
   },
   {
     id: 'cerveza',
@@ -379,7 +351,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍺',
     price: 600,
     available: true,
-    prepTime: 1,
   },
   {
     id: 'malta',
@@ -389,7 +360,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🍺',
     price: 600,
     available: true,
-    prepTime: 1,
   },
 
   // ===== COMBOS (2) =====
@@ -401,7 +371,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🎉',
     price: 3200,
     available: true,
-    prepTime: 25,
     isCombo: true,
     comboItems: ['pizza_especial', 'refrescos', 'refrescos', 'helados'],
   },
@@ -413,7 +382,6 @@ export const PRODUCTS: Product[] = [
     emoji: '🎉',
     price: 2900,
     available: true,
-    prepTime: 25,
     isCombo: true,
     comboItems: ['pizza_muzzarella', 'pizza_especial', 'malteada'],
   },
