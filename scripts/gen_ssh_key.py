@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate ED25519 SSH keypair (compatible with OpenSSH authorized_keys)."""
+"""Generate ED25519 SSH keypair in OpenSSH format (compatible with paramiko & GitHub)."""
 import base64
-import struct
+import hashlib
 from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
@@ -13,36 +13,39 @@ SSH_DIR.chmod(0o700)
 priv = Ed25519PrivateKey.generate()
 pub = priv.public_key()
 
-# PEM (PKCS8 unencrypted) -> OpenSSH private key format
-priv_pem = priv.private_bytes(
+# OpenSSH-format private key (unencrypted)
+priv_bytes = priv.private_bytes(
     encoding=serialization.Encoding.PEM,
-    format=serialization.PrivateFormat.PKCS8,
+    format=serialization.PrivateFormat.OpenSSH,
     encryption_algorithm=serialization.NoEncryption(),
 )
 
-# Build the OpenSSH public key wire format for ED25519:
-# string "ssh-ed25519", string <32-byte public key>
-raw_pub = pub.public_bytes(
-    encoding=serialization.Encoding.Raw,
-    format=serialization.PublicFormat.Raw,
+# Public key in OpenSSH format (encoded as b'ssh-ed25519 <base64>')
+pub_bytes = pub.public_bytes(
+    encoding=serialization.Encoding.OpenSSH,
+    format=serialization.PublicFormat.OpenSSH,
 )
-
-def ssh_string(b: bytes) -> bytes:
-    return struct.pack(">I", len(b)) + b
-
-blob = ssh_string(b"ssh-ed25519") + ssh_string(raw_pub)
-b64 = base64.b64encode(blob).decode("ascii")
-ssh_pub_line = f"ssh-ed25519 {b64} los-compas-deploy@z-env\n"
+pub_line = pub_bytes.decode("ascii") + " los-compas-deploy@z-env\n"
 
 priv_path = SSH_DIR / "id_ed25519"
 pub_path = SSH_DIR / "id_ed25519.pub"
-priv_path.write_bytes(priv_pem)
-pub_path.write_text(ssh_pub_line)
+
+# Back up old key
+if priv_path.exists():
+    priv_path.rename(priv_path.with_suffix(".bak"))
+if pub_path.exists():
+    pub_path.rename(pub_path.with_suffix(".bak"))
+
+priv_path.write_bytes(priv_bytes)
+pub_path.write_text(pub_line)
 priv_path.chmod(0o600)
 pub_path.chmod(0o644)
 
-print("=== Public key (paste this into GitHub Deploy Keys) ===")
-print(ssh_pub_line)
-print(f"\n=== Files saved ===")
-print(f"Private: {priv_path}")
-print(f"Public : {pub_path}")
+# Compute SHA256 fingerprint
+blob_b64 = pub_bytes.decode().split(" ")[1]
+fp = hashlib.sha256(base64.b64decode(blob_b64)).digest()
+fp_b64 = base64.b64encode(fp).decode().rstrip("=")
+print("=== NEW Public Key (REPLACE the old one in GitHub Deploy Keys) ===")
+print(pub_line)
+print(f"SHA256 fingerprint: SHA256:{fp_b64}")
+print(f"Private key saved at: {priv_path}")
