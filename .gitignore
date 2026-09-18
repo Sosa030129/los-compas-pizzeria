@@ -60,6 +60,9 @@ db/
 # environment
 .env
 
+# FASE 3.8: Netlify build artifacts (66MB, no deben estar en git)
+.netlify
+
 # logs
 dev.log
 server.log

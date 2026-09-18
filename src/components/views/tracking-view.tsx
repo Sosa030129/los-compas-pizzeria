@@ -20,12 +20,22 @@ export function TrackingView() {
   const [search, setSearch] = useState('');
 
   // Filtrar pedidos:
-  // - Si es empleado (admin/cocina/repartidor): ve TODOS los pedidos
+  // - Si es admin: ve TODOS los pedidos (acceso completo para gestión)
+  // - Si es cocina: ve todos los pedidos (necesita ver qué preparar)
+  // - Si es repartidor: SOLO ve pedidos asignados a él (PII leak fix #57)
+  //   No debe ver pedidos de otros repartidores ni datos de clientes que no le tocan
   // - Si es cliente: solo ve pedidos que coincidan con su último teléfono
-  //   Para buscar un pedido por código, debe ingresar también el teléfono (bug #57: PII leak)
   const isEmployee = currentEmployee !== null;
+  const isRepartidor = currentEmployee?.role === 'repartidor';
   const myOrders = isEmployee
-    ? orders
+    ? isRepartidor
+      ? orders.filter((o) => {
+          // Repartidor: solo pedidos asignados a él (en estado 'camino' o 'entregado')
+          const assignedToMe = o.assignedDelivery === currentEmployee?.id;
+          const isDeliveryState = o.state === 'camino' || o.state === 'entregado' || o.state === 'listo';
+          return assignedToMe && isDeliveryState;
+        })
+      : orders
     : orders.filter((o) => {
         // Cliente: por defecto muestra solo sus pedidos (mismo teléfono normalizado)
         const normalizedLast = lastCustomerPhone?.replace(/[\s-]/g, '') || '';

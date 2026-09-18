@@ -129,6 +129,47 @@ export function StatsCharts() {
     return totalSales / delivered.length;
   }, [orders, totalSales]);
 
+  // FASE 3.5: Clientes recurrentes (que han hecho 2+ pedidos)
+  const recurringCustomers = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const o of orders) {
+      const key = o.customerPhone?.replace(/[\s-]/g, '') || '';
+      if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return Array.from(counts.values()).filter((c) => c >= 2).length;
+  }, [orders]);
+
+  // FASE 3.5: Total de clientes únicos
+  const uniqueCustomers = useMemo(() => {
+    const set = new Set<string>();
+    for (const o of orders) {
+      const key = o.customerPhone?.replace(/[\s-]/g, '') || '';
+      if (key) set.add(key);
+    }
+    return set.size;
+  }, [orders]);
+
+  // FASE 3.5: Top productos por ingresos (no solo por cantidad)
+  const topProductsByRevenue = useMemo(() => {
+    const revenueByProduct = new Map<string, number>();
+    for (const o of orders) {
+      if (o.state === 'cancelado') continue;
+      for (const item of o.items) {
+        if (!item.productId) continue;
+        const key = item.productId;
+        const r = (item.unitPrice + item.extrasTotal) * item.qty;
+        revenueByProduct.set(key, (revenueByProduct.get(key) || 0) + r);
+      }
+    }
+    return Array.from(revenueByProduct.entries())
+      .map(([pid, revenue]) => {
+        const p = products.find((pr) => pr.id === pid);
+        return { name: p?.name || 'Desconocido', emoji: p?.emoji || '🍕', revenue };
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [orders, products]);
+
   // Si no hay datos, mostrar mensaje
   if (orders.length === 0) {
     return (
@@ -144,11 +185,14 @@ export function StatsCharts() {
 
   return (
     <div className="space-y-4">
-      {/* KPIs superiores */}
+      {/* KPIs superiores — FASE 3.5: añadidos clientes únicos + recurrentes */}
       <div className="grid grid-cols-3 gap-2">
         <KpiCard label="Ingresos totales" value={formatCUP(totalSales)} emoji="💰" />
         <KpiCard label="Ticket promedio" value={formatCUP(avgTicket)} emoji="📈" />
         <KpiCard label="Pedidos totales" value={orders.length.toString()} emoji="📦" />
+        <KpiCard label="Clientes únicos" value={uniqueCustomers.toString()} emoji="👥" />
+        <KpiCard label="Recurrentes (2+)" value={recurringCustomers.toString()} emoji="⭐" />
+        <KpiCard label="Tasa recurrencia" value={uniqueCustomers > 0 ? `${Math.round((recurringCustomers / uniqueCustomers) * 100)}%` : '0%'} emoji="🔁" />
       </div>
 
       {/* Gráfico de ventas por día */}

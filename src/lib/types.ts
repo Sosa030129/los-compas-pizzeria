@@ -230,6 +230,9 @@ export interface AppState {
   // Cliente actual (para tracking): último teléfono que hizo pedido desde este dispositivo
   lastCustomerPhone: string | null;
 
+  // FASE 3.4: Favoritos locales (productIds)
+  favorites: string[];
+
   // Empleados
   employees: Employee[];
   currentEmployee: Employee | null;

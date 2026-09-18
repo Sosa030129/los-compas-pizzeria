@@ -8,7 +8,7 @@ import {
 } from '@/lib/los-compas';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import type { CartItem, CartItemIngredient, IngredientQty } from '@/lib/types';
+import type { CartItem, CartItemIngredient, IngredientQty, PizzaSize } from '@/lib/types';
 
 const QTY_OPTIONS: IngredientQty[] = ['normal', 'doble', 'triple'];
 // Ya no usamos BASE_INCLUDED global: cada pizza tiene sus defaultIngredients como incluidos
@@ -32,6 +32,9 @@ export function CartView() {
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [editItem, setEditItem] = useState<CartItem | null>(null);
   const [editIngs, setEditIngs] = useState<CartItemIngredient[]>([]);
+  // FASE 3.2: Editar tamaño y borde de queso desde el carrito
+  const [editSize, setEditSize] = useState<PizzaSize | null>(null);
+  const [editBorder, setEditBorder] = useState(false);
 
   const totals = useStore(useShallow((s) => calculateCartTotals(s.cart)));
 
@@ -119,6 +122,8 @@ export function CartView() {
                           onClick={() => {
                             setEditItem(item);
                             setEditIngs(item.ingredients ? [...item.ingredients] : []);
+                            setEditSize(item.size ?? null);
+                            setEditBorder(item.borderCheese ?? false);
                           }}
                           className="text-primary hover:bg-primary/10 w-7 h-7 rounded-full flex items-center justify-center"
                           aria-label="Editar"
@@ -427,18 +432,57 @@ export function CartView() {
                   <span className="text-4xl">{editItem.emoji}</span>
                   <div>
                     <h3 className="font-cartoon text-base">Editar {editItem.name}</h3>
-                    <p className="text-xs text-muted-foreground">{sizes.find((s) => s.id === editItem.size)?.label}</p>
+                    <p className="text-xs text-muted-foreground">{sizes.find((s) => s.id === editSize)?.label}{editBorder ? ' · Borde queso' : ''}</p>
                   </div>
                 </div>
                 <button onClick={() => setEditItem(null)} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center"><X size={16} /></button>
               </div>
+
+              {/* FASE 3.2: Selector de tamaño */}
+              <p className="text-xs font-bold text-muted-foreground mb-2">Tamaño:</p>
+              <div className="grid grid-cols-2 gap-1.5 mb-3">
+                {sizes.map((s) => {
+                  const isSel = editSize === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setEditSize(s.id)}
+                      className={`flex items-center justify-between rounded-xl px-2.5 py-2 text-left text-[11px] transition ${isSel ? 'bg-primary text-primary-foreground' : 'bg-secondary/60 hover:bg-secondary'}`}
+                    >
+                      <span className="font-medium leading-tight">{s.label}</span>
+                      <span className="font-bold">{s.basePrice.toLocaleString('es-CU')}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* FASE 3.2: Toggle Borde de queso */}
+              {(() => {
+                const sz = sizes.find((s) => s.id === editSize);
+                const bd = sz?.borderDelta ?? 0;
+                if (bd <= 0) return null;
+                return (
+                  <button
+                    onClick={() => setEditBorder((v) => !v)}
+                    className={`w-full p-2.5 rounded-xl border-2 flex items-center justify-between transition mb-3 ${editBorder ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}
+                  >
+                    <div className="text-left">
+                      <p className="text-xs font-bold">🧀 Borde de queso</p>
+                      <p className="text-[10px] text-muted-foreground">+{bd.toLocaleString('es-CU')} CUP</p>
+                    </div>
+                    <span className={`w-10 h-6 rounded-full transition-colors flex items-center ${editBorder ? 'bg-primary' : 'bg-muted-foreground'}`}>
+                      <span className={`w-4 h-4 bg-white rounded-full mx-1 transition-transform ${editBorder ? 'translate-x-4' : ''}`} />
+                    </span>
+                  </button>
+                );
+              })()}
 
               <p className="text-xs font-bold text-muted-foreground mb-2">Ingredientes (agrega o quita):</p>
               <div className="space-y-1.5 max-h-64 overflow-y-auto mb-3">
                 {ingredients.filter((i) => i.available).map((ing) => {
                   const ci = editIngs.find((s) => s.ingredientId === ing.id);
                   const qty = ci?.qty;
-                  const price = ing.priceBySize[editItem.size!] || 0;
+                  const price = (editSize ? ing.priceBySize[editSize] : ing.priceBySize[editItem.size!]) || 0;
                   const mult = qty ? ingredientQtyMultiplier(qty) : 0;
                   const editDefaults = (() => {
                     const s = new Set<string>();
@@ -488,6 +532,7 @@ export function CartView() {
               </div>
 
               {(() => {
+                const sz = sizes.find((s) => s.id === editSize);
                 const editDefaults = (() => {
                   const s = new Set<string>();
                   if (editItem.productId) {
@@ -498,13 +543,14 @@ export function CartView() {
                 })();
                 const newExtras = editIngs.reduce((sum, ci) => {
                   const ing = ingredients.find((i) => i.id === ci.ingredientId);
-                  if (!ing) return sum;
-                  const price = ing.priceBySize[editItem.size!] || 0;
+                  if (!ing || !editSize) return sum;
+                  const price = ing.priceBySize[editSize] || 0;
                   const mult = ingredientQtyMultiplier(ci.qty);
                   const freePortions = editDefaults.has(ci.ingredientId) ? 1 : 0;
                   return sum + price * Math.max(0, mult - freePortions);
                 }, 0);
-                const newTotal = editItem.unitPrice + newExtras;
+                const newUnitPrice = (sz?.basePrice ?? 0) + (editBorder ? (sz?.borderDelta ?? 0) : 0);
+                const newTotal = newUnitPrice + newExtras;
                 return (
                   <>
                     <div className="bg-secondary/40 rounded-xl p-2 mb-3 flex justify-between items-center">
@@ -512,7 +558,32 @@ export function CartView() {
                       <span className="font-cartoon text-base text-primary">{formatCUP(newTotal)}</span>
                     </div>
                     <button onClick={() => {
-                      updateCartItem(editItem.id, { ingredients: editIngs, extrasTotal: newExtras });
+                      const sz = sizes.find((s) => s.id === editSize);
+                      if (!sz) return;
+                      const editDefaults = (() => {
+                        const s = new Set<string>();
+                        if (editItem.productId) {
+                          const p = products.find((pr) => pr.id === editItem.productId);
+                          p?.defaultIngredients?.forEach((id) => s.add(id));
+                        }
+                        return s;
+                      })();
+                      const newExtras = editIngs.reduce((sum, ci) => {
+                        const ing = ingredients.find((i) => i.id === ci.ingredientId);
+                        if (!ing) return sum;
+                        const price = ing.priceBySize[editSize!] || 0;
+                        const mult = ingredientQtyMultiplier(ci.qty);
+                        const freePortions = editDefaults.has(ci.ingredientId) ? 1 : 0;
+                        return sum + price * Math.max(0, mult - freePortions);
+                      }, 0);
+                      const newUnitPrice = sz.basePrice + (editBorder ? (sz.borderDelta ?? 0) : 0);
+                      updateCartItem(editItem.id, {
+                        size: editSize!,
+                        borderCheese: editBorder,
+                        unitPrice: newUnitPrice,
+                        ingredients: editIngs,
+                        extrasTotal: newExtras,
+                      });
                       toast.success('Cambios guardados');
                       setEditItem(null);
                     }} className="w-full bg-primary text-primary-foreground py-3 rounded-full font-bold text-sm hover:opacity-95 animate-button-pop">

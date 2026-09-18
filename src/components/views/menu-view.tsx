@@ -3,7 +3,7 @@
 import { useStore } from '@/lib/store';
 import { useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, X, Minus, Check } from 'lucide-react';
+import { Search, Plus, X, Minus, Check, Heart } from 'lucide-react';
 import { uid, ingredientQtyMultiplier, formatCUP } from '@/lib/los-compas';
 import type { CartItem, CartItemIngredient, IngredientQty, PizzaSize, Product } from '@/lib/types';
 import { toast } from 'sonner';
@@ -18,6 +18,8 @@ export function MenuView() {
   const ingredients = useStore((s) => s.ingredients);
   const addToCart = useStore((s) => s.addToCart);
   const setView = useStore((s) => s.setView);
+  const favorites = useStore((s) => s.favorites);
+  const toggleFavorite = useStore((s) => s.toggleFavorite);
 
   const [query, setQuery] = useState('');
   const [activeCat, setActiveCat] = useState<string>('all');
@@ -151,11 +153,21 @@ export function MenuView() {
                 <span className="text-xs text-muted-foreground font-normal ml-1">({items.length})</span>
               </h2>
               <div className="grid grid-cols-2 gap-3">
-                {items.map((p, i) => (
+                {items.map((p, i) => {
+                  const isFav = favorites.includes(p.id);
+                  return (
                   <motion.div key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.04, 0.3) }}
                     className={`cartoon-border bg-card rounded-2xl p-3 flex flex-col ${!p.available ? 'opacity-60' : ''}`}>
-                    <div className="aspect-square flex items-center justify-center mb-2">
+                    <div className="aspect-square flex items-center justify-center mb-2 relative">
                       <span className={`text-5xl ${p.isPizza ? 'animate-spin-slow' : ''}`}>{p.emoji}</span>
+                      {/* FASE 3.4: Botón favorito */}
+                      <button
+                        onClick={() => toggleFavorite(p.id)}
+                        className={`absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center transition ${isFav ? 'bg-primary/20 text-primary' : 'bg-secondary/40 text-muted-foreground hover:text-primary'}`}
+                        aria-label={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                      >
+                        <Heart size={13} fill={isFav ? 'currentColor' : 'none'} strokeWidth={3} />
+                      </button>
                     </div>
                     <h3 className="font-cartoon text-sm leading-tight">{p.name}</h3>
                     <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1 min-h-[28px]">{p.description}</p>
@@ -172,7 +184,8 @@ export function MenuView() {
                       )}
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           );

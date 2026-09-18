@@ -8,9 +8,10 @@ import {
   Loader2, ChevronRight, RefreshCw,
 } from 'lucide-react';
 import {
-  formatCUP, formatDateTime, getStateInfo,
+  formatCUP, formatDateTime, getStateInfo, ingredientQtyMultiplier,
 } from '@/lib/los-compas';
 import { toast } from 'sonner';
+import type { CartItem, PizzaSize } from '@/lib/types';
 
 type Tab = 'login' | 'register' | 'profile';
 
@@ -351,6 +352,80 @@ function ProfileView({
   const [newAddress, setNewAddress] = useState('');
   const [newRef, setNewRef] = useState('');
 
+  // FASE 3.3: Pedir de nuevo — reconstruir pedido con precios actuales (no históricos)
+  const addToCart = useStore((s) => s.addToCart);
+  const products = useStore((s) => s.products);
+  const sizes = useStore((s) => s.sizes);
+  const ingredients = useStore((s) => s.ingredients);
+
+  const repeatOrder = (order: any) => {
+    if (!order.items || !Array.isArray(order.items)) return;
+    let added = 0;
+    for (const item of order.items) {
+      // Si el item tenía productId, buscar el producto actual
+      let unitPrice = item.unitPrice ?? 0;
+      let extrasTotal = item.extrasTotal ?? 0;
+      let name = item.name;
+      let emoji = item.emoji;
+      let isCombo = item.isCombo;
+
+      if (item.productId) {
+        const p = products.find((pr) => pr.id === item.productId);
+        if (p) {
+          if (!p.available) {
+            toast.error(`${p.name} no está disponible`);
+            continue;
+          }
+          name = p.name;
+          emoji = p.emoji;
+          isCombo = p.isCombo;
+          if (p.isPizza) {
+            // Pizza: recalcular precio por tamaño actual + borde + ingredientes
+            const sz = sizes.find((s) => s.id === item.size);
+            if (sz) {
+              unitPrice = sz.basePrice + (item.borderCheese ? (sz.borderDelta ?? 0) : 0);
+            }
+            // Recalcular extras con precios actuales de ingredientes
+            const defaultIds = new Set(p.defaultIngredients || []);
+            extrasTotal = (item.ingredients || []).reduce((sum: number, ci: any) => {
+              const ing = ingredients.find((i) => i.id === ci.ingredientId);
+              if (!ing || !item.size) return sum;
+              const price = ing.priceBySize[item.size as PizzaSize] || 0;
+              const mult = ingredientQtyMultiplier(ci.qty);
+              const freePortions = defaultIds.has(ci.ingredientId) ? 1 : 0;
+              return sum + price * Math.max(0, mult - freePortions);
+            }, 0);
+          } else {
+            // Producto normal: usar precio actual
+            unitPrice = p.price;
+            extrasTotal = 0;
+          }
+        }
+      }
+
+      const cartItem: CartItem = {
+        id: `cart_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        productId: item.productId,
+        name,
+        emoji,
+        unitPrice,
+        qty: Math.max(1, Math.floor(item.qty ?? 1)),
+        size: item.size,
+        borderCheese: item.borderCheese,
+        extrasTotal,
+        ingredients: item.ingredients,
+        isCombo,
+        notes: item.notes,
+      };
+      addToCart(cartItem);
+      added++;
+    }
+    if (added > 0) {
+      toast.success(`${added} producto(s) agregado(s) al carrito`);
+      setView('cart');
+    }
+  };
+
   return (
     <div className="animate-screen-enter pb-24">
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
@@ -461,6 +536,9 @@ function ProfileView({
           )}
         </section>
 
+        {/* FASE 3.4: Favoritos locales */}
+        <FavoriteSection setView={setView} />
+
         {/* Historial de pedidos */}
         <section>
           <div className="flex items-center justify-between mb-2">
@@ -488,30 +566,41 @@ function ProfileView({
               {profile.orders.map((o: any) => {
                 const st = getStateInfo(o.state);
                 return (
-                  <button
+                  <div
                     key={o.id}
-                    onClick={() => {
-                      // Usar el store para mostrar el detalle
-                      useStore.getState().setSelectedOrder(o.id);
-                      setView('tracking');
-                    }}
-                    className="cartoon-border bg-card rounded-2xl p-3 w-full text-left hover:bg-accent/20 transition flex items-center gap-3"
+                    className="cartoon-border bg-card rounded-2xl p-3 w-full text-left hover:bg-accent/20 transition"
                   >
-                    <span className="font-bold text-xs text-primary w-16">{o.code}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs truncate">
-                        {o.items?.length || 0} producto(s) · {formatCUP(o.total)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {formatDateTime(typeof o.createdAt === 'number' ? o.createdAt : new Date(o.createdAt).getTime())}
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: `${st.color}33`, color: st.color }}>
-                      {st.emoji} {st.label}
-                    </span>
-                    <ChevronRight size={14} className="text-muted-foreground" />
-                  </button>
+                    <button
+                      onClick={() => {
+                        // Usar el store para mostrar el detalle
+                        useStore.getState().setSelectedOrder(o.id);
+                        setView('tracking');
+                      }}
+                      className="w-full flex items-center gap-3 text-left"
+                    >
+                      <span className="font-bold text-xs text-primary w-16">{o.code}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs truncate">
+                          {o.items?.length || 0} producto(s) · {formatCUP(o.total)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatDateTime(typeof o.createdAt === 'number' ? o.createdAt : new Date(o.createdAt).getTime())}
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: `${st.color}33`, color: st.color }}>
+                        {st.emoji} {st.label}
+                      </span>
+                      <ChevronRight size={14} className="text-muted-foreground" />
+                    </button>
+                    {/* FASE 3.3: Botón Repetir pedido */}
+                    <button
+                      onClick={() => repeatOrder(o)}
+                      className="mt-2 w-full bg-secondary hover:bg-secondary/70 text-foreground py-1.5 rounded-full font-bold text-[11px] flex items-center justify-center gap-1"
+                    >
+                      <RefreshCw size={11} /> Repetir pedido
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -519,5 +608,74 @@ function ProfileView({
         </section>
       </div>
     </div>
+  );
+}
+
+// FASE 3.4: Componente separado para favoritos (suscribe al store directamente)
+function FavoriteSection({ setView }: { setView: (v: any) => void }) {
+  const favorites = useStore((s) => s.favorites);
+  const products = useStore((s) => s.products);
+  const toggleFavorite = useStore((s) => s.toggleFavorite);
+  const addToCart = useStore((s) => s.addToCart);
+
+  const favProducts = products.filter((p) => favorites.includes(p.id));
+
+  return (
+    <section>
+      <h2 className="font-cartoon text-sm flex items-center gap-1.5 mb-2">
+        <Heart size={16} className="text-primary" /> Mis favoritos ({favProducts.length})
+      </h2>
+      {favProducts.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-4">
+          Marca productos con el corazón ❤️ en el menú para verlos aquí.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {favProducts.map((p) => (
+            <div key={p.id} className="cartoon-border bg-card rounded-xl p-2.5 flex flex-col">
+              <div className="flex items-start justify-between gap-1">
+                <span className="text-3xl">{p.emoji}</span>
+                <button
+                  onClick={() => toggleFavorite(p.id)}
+                  className="text-primary hover:bg-primary/10 w-6 h-6 rounded-full flex items-center justify-center"
+                  aria-label="Quitar de favoritos"
+                >
+                  <Heart size={11} fill="currentColor" />
+                </button>
+              </div>
+              <h3 className="font-cartoon text-xs leading-tight mt-1">{p.name}</h3>
+              <p className="text-[11px] font-bold text-primary mt-0.5">
+                {p.isPizza ? 'Desde ' : ''}{(p.isPizza ? Math.min(...useStore.getState().sizes.map((s) => s.basePrice)) : p.price).toLocaleString('es-CU')} CUP
+              </p>
+              {p.available && (
+                <button
+                  onClick={() => {
+                    // FASE 3.4: agregar rápido al carrito (para productos no-pizza)
+                    if (p.isPizza) {
+                      // Para pizza, ir al menú y abrir el modal
+                      setView('menu');
+                    } else {
+                      addToCart({
+                        id: `cart_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                        productId: p.id,
+                        name: p.name,
+                        emoji: p.emoji,
+                        unitPrice: p.price,
+                        qty: 1,
+                        extrasTotal: 0,
+                      });
+                      toast.success(`${p.name} agregado al carrito`);
+                    }
+                  }}
+                  className="mt-1.5 bg-primary text-primary-foreground text-[10px] font-bold py-1 rounded-full"
+                >
+                  + Agregar
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

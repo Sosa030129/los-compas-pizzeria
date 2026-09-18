@@ -108,6 +108,11 @@ interface StoreActions {
   // Logs
   addLog: (user: string, action: string, detail: string) => void;
 
+  // FASE 3.4: Favoritos (productos marcados por el cliente)
+  favorites: string[]; // productIds
+  toggleFavorite: (productId: string) => void;
+  isFavorite: (productId: string) => boolean;
+
   // Backup / Restore
   exportData: () => string;
   importData: (json: string) => boolean;
@@ -134,6 +139,7 @@ const initialState: AppState = {
   logs: [],
   currentView: 'home',
   selectedOrderId: null,
+  favorites: [], // FASE 3.4: favoritos locales (productIds)
 };
 
 // ===== Helpers libres de efectos (computan sobre el estado, no lo mutan) =====
@@ -814,31 +820,42 @@ export const useStore = create<Store>()(
       resetAll: () => {
         set({ ...initialState, currentView: 'home' });
       },
+
+      // ===== FASE 3.4: Favoritos =====
+      toggleFavorite: (productId) => set((s) => {
+        const isFav = s.favorites.includes(productId);
+        const newFavs = isFav ? s.favorites.filter(id => id !== productId) : [...s.favorites, productId];
+        return { favorites: newFavs };
+      }),
+
+      isFavorite: (productId) => get().favorites.includes(productId),
     })
 );
 
 // ===== Persistencia manual del carrito (sin middleware persist para evitar SSR mismatch) =====
-// Cargar carrito desde localStorage al montar
+// Cargar carrito + favoritos desde localStorage al montar
 if (typeof window !== 'undefined') {
   try {
     const saved = localStorage.getItem('los-compas-cart');
     if (saved) {
-      const { cart, appliedPromoCode, lastCustomerPhone } = JSON.parse(saved);
+      const { cart, appliedPromoCode, lastCustomerPhone, favorites } = JSON.parse(saved);
       useStore.setState({
         cart: Array.isArray(cart) ? cart : [],
         appliedPromoCode: appliedPromoCode || null,
         lastCustomerPhone: lastCustomerPhone || null,
+        favorites: Array.isArray(favorites) ? favorites : [],
       });
     }
   } catch {}
 
-  // Guardar carrito en localStorage cuando cambia
+  // Guardar carrito + favoritos en localStorage cuando cambia
   useStore.subscribe((state) => {
     try {
       localStorage.setItem('los-compas-cart', JSON.stringify({
         cart: state.cart,
         appliedPromoCode: state.appliedPromoCode,
         lastCustomerPhone: state.lastCustomerPhone,
+        favorites: state.favorites || [],
       }));
     } catch {}
   });
