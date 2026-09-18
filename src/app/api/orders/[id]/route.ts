@@ -6,6 +6,7 @@ import { getSession } from '@/lib/server-auth';
 import {
   notifyOrderConfirmed, notifyOrderReady, notifyOrderDelivered,
 } from '@/lib/whatsapp-cloud';
+import { notifyOrderPush } from '@/lib/push-notifications';
 
 // Máquina de estados: qué transiciones son válidas desde cada estado
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -131,6 +132,12 @@ export async function PATCH(
           total: updated.total,
           scheduledTime: updated.scheduledTime,
         }).catch(() => {});
+        // FASE 3.6: Push notification al cliente
+        notifyOrderPush(
+          { customerId: updated.customerId ?? null, code: updated.code, customerName: updated.customerName },
+          '✅ Pedido confirmado',
+          `Tu pedido ${updated.code} fue confirmado. Total: ${updated.total} CUP`,
+        ).catch(() => {});
       } else if (patch.state === 'listo') {
         notifyOrderReady({
           id: updated.id,
@@ -138,6 +145,12 @@ export async function PATCH(
           customerName: updated.customerName,
           customerPhone: updated.customerPhone,
         }).catch(() => {});
+        // FASE 3.6: Push notification al cliente
+        notifyOrderPush(
+          { customerId: updated.customerId ?? null, code: updated.code, customerName: updated.customerName },
+          '📦 Tu pedido está listo',
+          `Tu pedido ${updated.code} ya está listo para entrega/recogida.`,
+        ).catch(() => {});
       } else if (patch.state === 'entregado') {
         notifyOrderDelivered({
           id: updated.id,
@@ -145,6 +158,12 @@ export async function PATCH(
           customerName: updated.customerName,
           customerPhone: updated.customerPhone,
         }).catch(() => {});
+        // FASE 3.6: Push notification al cliente
+        notifyOrderPush(
+          { customerId: updated.customerId ?? null, code: updated.code, customerName: updated.customerName },
+          '🎉 Pedido entregado',
+          `Tu pedido ${updated.code} fue entregado. ¡Gracias por comprar en LOS COMPAS!`,
+        ).catch(() => {});
       }
     }
 

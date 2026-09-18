@@ -5,13 +5,14 @@ import { useStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Phone, Lock, MapPin, Heart, Package, LogOut, Plus, Trash2,
-  Loader2, ChevronRight, RefreshCw, UserCog,
+  Loader2, ChevronRight, RefreshCw, UserCog, Bell, BellOff,
 } from 'lucide-react';
 import {
   formatCUP, formatDateTime, getStateInfo, ingredientQtyMultiplier, getIngredientPrice,
 } from '@/lib/los-compas';
 import { toast } from 'sonner';
 import type { CartItem, PizzaSize } from '@/lib/types';
+import { usePushNotifications } from '@/hooks/use-push-notifications';
 
 type Tab = 'login' | 'register' | 'profile';
 
@@ -465,6 +466,9 @@ function ProfileView({
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
+        {/* FASE 3.6: Notificaciones Push */}
+        <PushNotificationsCard />
+
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2">
           <div className="cartoon-border bg-card rounded-2xl p-3 text-center">
@@ -694,5 +698,49 @@ function FavoriteSection({ setView }: { setView: (v: any) => void }) {
         </div>
       )}
     </section>
+  );
+}
+
+// FASE 3.6: Tarjeta para activar/desactivar notificaciones push
+function PushNotificationsCard() {
+  const { state, loading, subscribe, unsubscribe } = usePushNotifications();
+
+  if (state === 'unsupported') {
+    return null; // Navegador no soporta push → no mostrar
+  }
+
+  const isOn = state === 'subscribed';
+
+  return (
+    <div className="cartoon-border bg-card rounded-2xl p-4">
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isOn ? 'bg-primary/20' : 'bg-secondary/40'}`}>
+          {isOn ? <Bell size={18} className="text-primary" /> : <BellOff size={18} className="text-muted-foreground" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-cartoon text-sm flex items-center gap-2">
+            {isOn ? '🔔 Notificaciones activadas' : '🔕 Notificaciones push'}
+          </h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {isOn
+              ? 'Recibirás avisos cuando tu pedido sea confirmado, esté listo y sea entregado.'
+              : 'Activa para recibir avisos automáticos del estado de tus pedidos.'}
+          </p>
+          <button
+            onClick={isOn ? unsubscribe : subscribe}
+            disabled={loading}
+            className={`mt-2 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 disabled:opacity-50 ${isOn ? 'bg-secondary text-foreground' : 'bg-primary text-primary-foreground'}`}
+          >
+            {loading ? (
+              <><Loader2 size={12} className="animate-spin" /> Procesando...</>
+            ) : isOn ? (
+              <>Desactivar</>
+            ) : (
+              <>Activar notificaciones</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

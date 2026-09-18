@@ -1,4 +1,5 @@
 // POST /api/push/subscribe - Guardar suscripción de push notifications del cliente
+// DELETE /api/push/subscribe - Borrar suscripción (cuando el cliente se desuscribe)
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/server-auth';
@@ -16,5 +17,17 @@ export async function POST(req: NextRequest) {
     where: { id: session.userId },
     data: { pushSubscription: JSON.stringify(subscription) },
   });
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE() {
+  const session = await getSession();
+  if (!session || session.type !== 'customer') {
+    return NextResponse.json({ ok: false, error: 'No autorizado' }, { status: 401 });
+  }
+  await db.customer.update({
+    where: { id: session.userId },
+    data: { pushSubscription: null },
+  }).catch(() => {});
   return NextResponse.json({ ok: true });
 }
