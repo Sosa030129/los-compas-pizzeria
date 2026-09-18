@@ -4,7 +4,7 @@ import { useStore, useShallow } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Minus, Trash2, ShoppingBag, ChevronLeft, ArrowRight, Tag, X, Pencil } from 'lucide-react';
 import {
-  formatCUP, ingredientQtyLabel, ingredientQtyMultiplier, applyPromotions, findPromotionByCode, calculateCartTotals,
+  formatCUP, ingredientQtyLabel, ingredientQtyMultiplier, applyPromotions, findPromotionByCode, calculateCartTotals, getIngredientPrice,
 } from '@/lib/los-compas';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -482,7 +482,7 @@ export function CartView() {
                 {ingredients.filter((i) => i.available).map((ing) => {
                   const ci = editIngs.find((s) => s.ingredientId === ing.id);
                   const qty = ci?.qty;
-                  const price = (editSize ? ing.priceBySize[editSize] : ing.priceBySize[editItem.size!]) || 0;
+                  const price = getIngredientPrice(ing, editSize ?? editItem.size);
                   const mult = qty ? ingredientQtyMultiplier(qty) : 0;
                   const editDefaults = (() => {
                     const s = new Set<string>();
@@ -544,7 +544,7 @@ export function CartView() {
                 const newExtras = editIngs.reduce((sum, ci) => {
                   const ing = ingredients.find((i) => i.id === ci.ingredientId);
                   if (!ing || !editSize) return sum;
-                  const price = ing.priceBySize[editSize] || 0;
+                  const price = getIngredientPrice(ing, editSize);
                   const mult = ingredientQtyMultiplier(ci.qty);
                   const freePortions = editDefaults.has(ci.ingredientId) ? 1 : 0;
                   return sum + price * Math.max(0, mult - freePortions);
@@ -571,7 +571,7 @@ export function CartView() {
                       const newExtras = editIngs.reduce((sum, ci) => {
                         const ing = ingredients.find((i) => i.id === ci.ingredientId);
                         if (!ing) return sum;
-                        const price = ing.priceBySize[editSize!] || 0;
+                        const price = getIngredientPrice(ing, editSize);
                         const mult = ingredientQtyMultiplier(ci.qty);
                         const freePortions = editDefaults.has(ci.ingredientId) ? 1 : 0;
                         return sum + price * Math.max(0, mult - freePortions);

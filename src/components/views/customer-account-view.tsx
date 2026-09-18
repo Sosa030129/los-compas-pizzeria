@@ -8,7 +8,7 @@ import {
   Loader2, ChevronRight, RefreshCw, UserCog,
 } from 'lucide-react';
 import {
-  formatCUP, formatDateTime, getStateInfo, ingredientQtyMultiplier,
+  formatCUP, formatDateTime, getStateInfo, ingredientQtyMultiplier, getIngredientPrice,
 } from '@/lib/los-compas';
 import { toast } from 'sonner';
 import type { CartItem, PizzaSize } from '@/lib/types';
@@ -407,7 +407,7 @@ function ProfileView({
             extrasTotal = (item.ingredients || []).reduce((sum: number, ci: any) => {
               const ing = ingredients.find((i) => i.id === ci.ingredientId);
               if (!ing || !item.size) return sum;
-              const price = ing.priceBySize[item.size as PizzaSize] || 0;
+              const price = getIngredientPrice(ing, item.size as PizzaSize);
               const mult = ingredientQtyMultiplier(ci.qty);
               const freePortions = defaultIds.has(ci.ingredientId) ? 1 : 0;
               return sum + price * Math.max(0, mult - freePortions);

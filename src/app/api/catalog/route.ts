@@ -24,10 +24,19 @@ export async function GET() {
       defaultIngredients: p.defaultIngredients ? JSON.parse(p.defaultIngredients) : undefined,
       comboItems: p.comboItems ? JSON.parse(p.comboItems) : undefined,
     }));
-    const parsedIngredients = ingredients.map((i) => ({
-      ...i,
-      priceBySize: JSON.parse(i.priceBySize),
-    }));
+    // FASE 3 fix: priceBySize defensivo — si viene null o inválido, usar {} para que
+    // el helper getIngredientPrice del frontend pueda hacer fallback al grupo small/family
+    const parsedIngredients = ingredients.map((i) => {
+      let pbs: any = {};
+      try {
+        pbs = i.priceBySize ? JSON.parse(i.priceBySize) : {};
+      } catch {
+        pbs = {};
+      }
+      // Asegurar que sea un objeto
+      if (!pbs || typeof pbs !== 'object' || Array.isArray(pbs)) pbs = {};
+      return { ...i, priceBySize: pbs };
+    });
     const parsedConfig = config ? {
       ...config,
       transferSurcharge: config.transferSurcharge,

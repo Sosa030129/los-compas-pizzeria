@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Minus, Check, ShoppingCart, ChevronLeft, Info } from 'lucide-react';
-import { uid, ingredientQtyMultiplier, ingredientQtyLabel } from '@/lib/los-compas';
+import { uid, ingredientQtyMultiplier, ingredientQtyLabel, getIngredientPrice } from '@/lib/los-compas';
 import { PizzaVisualizer } from '@/components/pizza-visualizer';
 import type { CartItem, CartItemIngredient, IngredientQty, PizzaSize } from '@/lib/types';
 import { toast } from 'sonner';
@@ -36,7 +36,7 @@ export function BuilderView() {
   const extras = selected.reduce((sum, ci) => {
     const ing = ingredients.find((i) => i.id === ci.ingredientId);
     if (!ing) return sum;
-    const price = ing.priceBySize[size] || 0;
+    const price = getIngredientPrice(ing, size);
     const mult = ingredientQtyMultiplier(ci.qty); // 1, 2, or 3
     // Si es ingrediente base incluido y qty > 1, cobrar (mult - 1) porciones extra
     // Si no es base incluido, cobrar todas las porciones
@@ -190,7 +190,7 @@ export function BuilderView() {
             .map((ing) => {
               const selectedIng = selected.find((s) => s.ingredientId === ing.id);
               const qty = selectedIng?.qty;
-              const price = ing.priceBySize[size] || 0;
+              const price = getIngredientPrice(ing, size);
               return (
                 <motion.div
                   key={ing.id}

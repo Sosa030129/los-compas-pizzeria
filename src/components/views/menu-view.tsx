@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store';
 import { useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, X, Minus, Check, Heart } from 'lucide-react';
-import { uid, ingredientQtyMultiplier, formatCUP } from '@/lib/los-compas';
+import { uid, ingredientQtyMultiplier, formatCUP, getIngredientPrice } from '@/lib/los-compas';
 import type { CartItem, CartItemIngredient, IngredientQty, PizzaSize, Product } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -81,7 +81,7 @@ export function MenuView() {
   const extras = selectedIngs.reduce((sum, ci) => {
     const ing = ingredients.find((i) => i.id === ci.ingredientId);
     if (!ing || !selectedSize) return sum;
-    const price = ing.priceBySize[selectedSize] || 0;
+    const price = getIngredientPrice(ing, selectedSize);
     const mult = ingredientQtyMultiplier(ci.qty);
     const freePortions = defaultIngredientIds.has(ci.ingredientId) ? 1 : 0;
     return sum + price * Math.max(0, mult - freePortions);
@@ -272,7 +272,7 @@ export function MenuView() {
                     {ingredients.filter((i) => i.available).map((ing) => {
                       const ci = selectedIngs.find((s) => s.ingredientId === ing.id);
                       const qty = ci?.qty;
-                      const price = ing.priceBySize[selectedSize!] || 0;
+                      const price = getIngredientPrice(ing, selectedSize);
                       const mult = qty ? ingredientQtyMultiplier(qty) : 0;
                       const freePortions = defaultIngredientIds.has(ing.id) ? 1 : 0;
                       const charge = Math.max(0, mult - freePortions) * price;

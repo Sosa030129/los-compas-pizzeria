@@ -130,7 +130,35 @@ export function whatsappLink(phone: string, message: string): string {
 
 // ===== Cálculo de promociones =====
 
-import type { CartItem, Promotion, Product } from './types';
+import type { CartItem, Promotion, Product, Ingredient, PizzaSize } from './types';
+
+// FASE 3 fix: Tamaños "pequeños" (usan precio pequeño) y "familiares" (precio familiar).
+// Definidos según spec del negocio.
+export const SMALL_SIZES: PizzaSize[] = ['pequena_20', 'mediana_25', 'grande_30', 'rect_30x20'];
+export const FAMILY_SIZES: PizzaSize[] = ['rect_35x40', 'familiar_42x30', 'extra_46x36'];
+
+// FASE 3 fix: Helper para obtener el precio de un ingrediente para un tamaño dado.
+// Si priceBySize tiene el tamaño, lo usa. Si no (ingrediente guardado con datos
+// legacy o null), deriva el precio desde el grupo pequeño/familiar usando los
+// campos auxiliares priceSmall / priceFamily si existen, sino 0.
+export function getIngredientPrice(
+  ing: Ingredient,
+  size: PizzaSize | undefined | null,
+): number {
+  if (!size) return 0;
+  // 1. Intentar priceBySize[size] (caso normal)
+  const direct = ing.priceBySize?.[size];
+  if (typeof direct === 'number' && direct > 0) return direct;
+  // 2. Fallback: usar priceSmall o priceFamily según grupo del tamaño
+  const isFamily = FAMILY_SIZES.includes(size);
+  const fallback = isFamily
+    ? (ing as any).priceFamily ?? (ing as any).priceFamiliar
+    : (ing as any).priceSmall ?? (ing as any).pricePequeno;
+  if (typeof fallback === 'number' && fallback > 0) return fallback;
+  // 3. Último recurso: buscar cualquier valor en priceBySize
+  const anyPrice = ing.priceBySize ? Object.values(ing.priceBySize).find((v) => typeof v === 'number' && v > 0) : undefined;
+  return anyPrice ?? 0;
+}
 
 // Valida teléfono (formatos Cuba + internacional)
 // Acepta: +53 5 1234567, +5351234567, 55123456, +53 55000000, etc.
