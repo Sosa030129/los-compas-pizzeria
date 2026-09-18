@@ -5,7 +5,7 @@ import { useStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Phone, Lock, MapPin, Heart, Package, LogOut, Plus, Trash2,
-  Loader2, ChevronRight, RefreshCw,
+  Loader2, ChevronRight, RefreshCw, UserCog,
 } from 'lucide-react';
 import {
   formatCUP, formatDateTime, getStateInfo, ingredientQtyMultiplier,
@@ -208,6 +208,23 @@ export function CustomerAccountView() {
           💡 <strong>Cuenta opcional.</strong> Puedes pedir sin cuenta (solo ingresa tus datos en el checkout).
           Con cuenta, guardamos tus direcciones favoritas, historial y podrás repetir pedidos fácilmente.
         </div>
+
+        {/* Acceso empleados (admin/cocina/reparto) */}
+        <button
+          onClick={() => setView('login')}
+          className="mt-3 w-full cartoon-border bg-card rounded-2xl p-3 flex items-center justify-between hover:bg-accent/20 transition"
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center">
+              <UserCog size={18} className="text-primary" />
+            </span>
+            <div className="text-left">
+              <p className="text-xs font-bold">Acceso empleados</p>
+              <p className="text-[10px] text-muted-foreground">Admin · Cocina · Reparto</p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-muted-foreground" />
+        </button>
       </div>
     </div>
   );
