@@ -599,7 +599,22 @@ function ProductForm({ initial, onClose, onSave }: {
         {/* Header sticky */}
         <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
           <h3 className="font-cartoon text-base">{initial ? 'Editar producto' : 'Nuevo producto'}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center" aria-label="Cerrar">✕</button>
+          <button onClick={() => {
+            // FASE: botón X = Guardar y cerrar (si hay nombre), si no, descartar
+            if (!name.trim()) { onClose(); return; }
+            onSave({
+              id: initial?.id || uid('prod'),
+              name: name.trim(),
+              description: description.trim(),
+              category,
+              emoji,
+              price: isPizza ? 0 : Math.max(0, price),
+              available,
+              isPizza,
+              defaultSize: isPizza ? 'familiar_42x30' : undefined,
+              defaultIngredients: isPizza ? defaultIngredients : undefined,
+            });
+          }} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center" aria-label="Guardar y cerrar" title="Guardar y cerrar">✕</button>
         </div>
 
         {/* Body scrollable */}
@@ -810,7 +825,18 @@ function IngredientForm({ initial, sizes, onClose, onSave }: {
         {/* Header sticky */}
         <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
           <h3 className="font-cartoon text-base">{initial ? 'Editar ingrediente' : 'Nuevo ingrediente'}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center" aria-label="Cerrar">✕</button>
+          <button onClick={() => {
+            // FASE: botón X = Guardar y cerrar (si hay nombre), si no, descartar
+            if (!name.trim()) { onClose(); return; }
+            onSave({
+              id: initial?.id || uid('ing'),
+              name: name.trim(),
+              emoji,
+              color,
+              priceBySize: prices,
+              available,
+            });
+          }} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center" aria-label="Guardar y cerrar" title="Guardar y cerrar">✕</button>
         </div>
 
         {/* Body scrollable */}
@@ -1074,7 +1100,23 @@ function EmployeeForm({ initial, onClose, onSave }: {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
       <div className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-border max-h-[85vh] overflow-y-auto">
-        <h3 className="font-cartoon text-base mb-3">{initial ? 'Editar empleado' : 'Nuevo empleado'}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-cartoon text-base">{initial ? 'Editar empleado' : 'Nuevo empleado'}</h3>
+          <button onClick={() => {
+            // FASE: botón X = Guardar y cerrar (si hay username), si no, descartar
+            if (!name.trim() || !username.trim()) { onClose(); return; }
+            onSave({
+              id: initial?.id || uid('emp'),
+              name: name.trim(),
+              phone: phone.trim(),
+              username: username.trim(),
+              password,
+              role,
+              active: initial?.active ?? true,
+              permissions,
+            } as Employee);
+          }} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center" aria-label="Guardar y cerrar" title="Guardar y cerrar">✕</button>
+        </div>
         <div className="space-y-3">
           <FormRow label="Nombre completo">
             <input value={name} onChange={(e) => setName(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
@@ -1563,10 +1605,59 @@ function PromotionForm({
     { id: 'bundle', label: '2x1 / Bundle', emoji: '🎯', help: 'Compra X, lleva Y' },
   ];
 
+  // FASE: handleSubmit extraído para que el botón X también guarde
+  const handleSubmit = () => {
+    if (!name.trim()) {
+      toast.error('El nombre es obligatorio');
+      return;
+    }
+    if (inputToDate(validFrom) >= inputToDate(validTo)) {
+      toast.error('La fecha de inicio debe ser anterior a la fecha de fin');
+      return;
+    }
+    if (type === 'percent' && (value < 1 || value > 100)) {
+      toast.error('El porcentaje debe estar entre 1 y 100');
+      return;
+    }
+    if (type === 'fixed' && value <= 0) {
+      toast.error('El monto fijo debe ser mayor que 0');
+      return;
+    }
+    if (type === 'free_product' && (!freeProductId || value <= 0)) {
+      toast.error('Configura un producto y un umbral positivo');
+      return;
+    }
+    if (type === 'bundle' && (bundleBuyQty < 1 || bundleGetQty < 1)) {
+      toast.error('Las cantidades del bundle deben ser ≥ 1');
+      return;
+    }
+    onSave({
+      id: initial?.id || uid('promo'),
+      name: name.trim(),
+      description: description.trim(),
+      emoji,
+      type,
+      value,
+      freeProductId: type === 'free_product' ? freeProductId : undefined,
+      bundleBuyQty: type === 'bundle' ? bundleBuyQty : undefined,
+      bundleGetQty: type === 'bundle' ? bundleGetQty : undefined,
+      validFrom: inputToDate(validFrom),
+      validTo: inputToDate(validTo) + (24 * 60 * 60 * 1000 - 1),
+      active: initial?.active ?? true,
+      code: code.trim() || undefined,
+      appliesTo,
+      categoryId: appliesTo === 'category' ? categoryId : undefined,
+      productId: appliesTo === 'product' ? productId : undefined,
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
       <div className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-border max-h-[90vh] overflow-y-auto">
-        <h3 className="font-cartoon text-base mb-3">{initial ? 'Editar promoción' : 'Nueva promoción'}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-cartoon text-base">{initial ? 'Editar promoción' : 'Nueva promoción'}</h3>
+          <button onClick={handleSubmit} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center" aria-label="Guardar y cerrar" title="Guardar y cerrar">✕</button>
+        </div>
         <div className="space-y-3">
           <div className="grid grid-cols-[auto_1fr] gap-2">
             <FormRow label="Emoji">
@@ -1663,51 +1754,7 @@ function PromotionForm({
           <div className="flex gap-2 pt-2">
             <button onClick={onClose} className="flex-1 bg-secondary py-2.5 rounded-xl font-bold text-sm">Cancelar</button>
             <button
-              onClick={() => {
-                if (!name.trim()) {
-                  toast.error('El nombre es obligatorio');
-                  return;
-                }
-                // Validaciones (bugs #44, #45, #46)
-                if (inputToDate(validFrom) >= inputToDate(validTo)) {
-                  toast.error('La fecha de inicio debe ser anterior a la fecha de fin');
-                  return;
-                }
-                if (type === 'percent' && (value < 1 || value > 100)) {
-                  toast.error('El porcentaje debe estar entre 1 y 100');
-                  return;
-                }
-                if (type === 'fixed' && value <= 0) {
-                  toast.error('El monto fijo debe ser mayor que 0');
-                  return;
-                }
-                if (type === 'free_product' && (!freeProductId || value <= 0)) {
-                  toast.error('Configura un producto y un umbral positivo');
-                  return;
-                }
-                if (type === 'bundle' && (bundleBuyQty < 1 || bundleGetQty < 1)) {
-                  toast.error('Las cantidades del bundle deben ser ≥ 1');
-                  return;
-                }
-                onSave({
-                  id: initial?.id || uid('promo'),
-                  name: name.trim(),
-                  description: description.trim(),
-                  emoji,
-                  type,
-                  value,
-                  freeProductId: type === 'free_product' ? freeProductId : undefined,
-                  bundleBuyQty: type === 'bundle' ? bundleBuyQty : undefined,
-                  bundleGetQty: type === 'bundle' ? bundleGetQty : undefined,
-                  validFrom: inputToDate(validFrom),
-                  validTo: inputToDate(validTo) + (24 * 60 * 60 * 1000 - 1),
-                  active: initial?.active ?? true,
-                  code: code.trim() || undefined,
-                  appliesTo,
-                  categoryId: appliesTo === 'category' ? categoryId : undefined,
-                  productId: appliesTo === 'product' ? productId : undefined,
-                });
-              }}
+              onClick={handleSubmit}
               className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm"
             >
               <Save size={14} className="inline mr-1" /> Guardar
