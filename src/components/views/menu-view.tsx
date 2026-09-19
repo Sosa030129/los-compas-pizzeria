@@ -389,7 +389,25 @@ export function MenuView() {
       <AnimatePresence>
         {openOffer && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => {
-            // Click fuera del modal = cerrar sin agregar
+            // Click fuera del modal = mismo comportamiento que X: si ya eligió tamaño, agregar al carrito
+            if (openOffer && selectedSize && step === 'ingredients') {
+              const size = sizes.find((s) => s.id === selectedSize)!;
+              const unitPrice = size.basePrice + (borderCheese ? (size.borderDelta ?? 0) : 0);
+              const withDiscount = openOffer.discountPercent > 0
+                ? Math.round((unitPrice + extras) * (1 - openOffer.discountPercent / 100))
+                : unitPrice + extras;
+              addToCart({
+                id: uid('cart'),
+                productId: openOffer.productId,
+                name: openOffer.name,
+                emoji: openOffer.emoji,
+                unitPrice, qty: 1, size: size.id, borderCheese,
+                extrasTotal: extras,
+                ingredients: selectedIngs,
+                notes: `Oferta: ${openOffer.name}${openOffer.discountPercent > 0 ? ` (-${openOffer.discountPercent}%)` : ''}`,
+              });
+              toast.success(`${openOffer.name} agregada · ${formatCUP(withDiscount)}`);
+            }
             setOpenOffer(null);
             setStep('size');
             setInitialDefaults([]);
@@ -408,7 +426,26 @@ export function MenuView() {
                   </div>
                 </div>
                 <button onClick={() => {
-                  // Cerrar sin agregar
+                  // FASE: mismo comportamiento que pizza normal — si ya eligió tamaño,
+                  // cerrar con X envía la oferta al carrito con los ingredientes actuales
+                  if (openOffer && selectedSize && step === 'ingredients') {
+                    const size = sizes.find((s) => s.id === selectedSize)!;
+                    const unitPrice = size.basePrice + (borderCheese ? (size.borderDelta ?? 0) : 0);
+                    const withDiscount = openOffer.discountPercent > 0
+                      ? Math.round((unitPrice + extras) * (1 - openOffer.discountPercent / 100))
+                      : unitPrice + extras;
+                    addToCart({
+                      id: uid('cart'),
+                      productId: openOffer.productId,
+                      name: openOffer.name,
+                      emoji: openOffer.emoji,
+                      unitPrice, qty: 1, size: size.id, borderCheese,
+                      extrasTotal: extras,
+                      ingredients: selectedIngs,
+                      notes: `Oferta: ${openOffer.name}${openOffer.discountPercent > 0 ? ` (-${openOffer.discountPercent}%)` : ''}`,
+                    });
+                    toast.success(`${openOffer.name} agregada · ${formatCUP(withDiscount)}`);
+                  }
                   setOpenOffer(null);
                   setStep('size');
                   setInitialDefaults([]);

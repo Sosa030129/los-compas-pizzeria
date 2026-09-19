@@ -34,48 +34,48 @@ async function hash(pwd) {
   return 'pbkdf2\$10000\$' + salt.toString('base64') + '\$' + h.toString('base64');
 }
 
-// Productos según spec del negocio (32 productos)
+// Productos según spec del negocio (32 productos) — sin prepTime (eliminado en FASE C)
 const PIZZAS = [
-  ['pizza_custom','Pizza Personalizada','Pizza armada por el cliente con ingredientes a elección.','🍕',0,true,22,'familiar_42x30',['queso']],
-  ['pizza_muzzarella','Pizza Muzzarella','Clásica: masa artesanal, salsa de tomate y queso fundido.','🍕',0,true,20,'familiar_42x30',['queso']],
-  ['pizza_especial','Pizza Especial','Queso, jamón y salchicha. La favorita de la casa.','🍕',0,true,22,'familiar_42x30',['queso','jamon','salchicha']],
-  ['pizza_hawaiana','Pizza Hawaiana','Jamón, piña y queso. Dulce y salada a la vez.','🍕',0,true,22,'familiar_42x30',['queso','jamon','pina']],
-  ['pizza_vegetal','Pizza Vegetal','Vegetales frescos, cebolla y champiñones.','🍕',0,true,25,'familiar_42x30',['queso','vegetales','cebolla','champinones']],
+  ['pizza_custom','Pizza Personalizada','Pizza armada por el cliente con ingredientes a elección.','🍕',0,true,'familiar_42x30',['queso']],
+  ['pizza_muzzarella','Pizza Muzzarella','Clásica: masa artesanal, salsa de tomate y queso fundido.','🍕',0,true,'familiar_42x30',['queso']],
+  ['pizza_especial','Pizza Especial','Queso, jamón y salchicha. La favorita de la casa.','🍕',0,true,'familiar_42x30',['queso','jamon','salchicha']],
+  ['pizza_hawaiana','Pizza Hawaiana','Jamón, piña y queso. Dulce y salada a la vez.','🍕',0,true,'familiar_42x30',['queso','jamon','pina']],
+  ['pizza_vegetal','Pizza Vegetal','Vegetales frescos, cebolla y champiñones.','🍕',0,true,'familiar_42x30',['queso','vegetales','cebolla','champinones']],
 ];
 const COMIDAS = [
-  ['tacos_salchicha','Tacos de Salchicha','3 tacos crujientes rellenos de salchicha.','🌮',1000,true,15],
-  ['tacos_jamon','Tacos de Jamón','3 tacos crujientes rellenos de jamón.','🌮',1000,true,15],
-  ['empanadas_queso','Empanadas de Queso','5 empanadas crujientes con queso fundido.','🥟',1400,true,18],
-  ['espaguetis_queso','Espaguetis de Queso','Pasta italiana con salsa de tomate y queso fundido.','🍝',600,true,20],
-  ['tostones_normales','Tostones Naturales','Plátano verde frito, crujiente y salado.','🍌',450,true,12],
-  ['tostones_ajo','Tostones de Ajo','Tostones con aliño de ajo y hierbas.','🍌',550,true,12],
-  ['tostones_rellenos','Tostones Rellenos','Tostones rellenos de jamón y queso.','🍌',600,true,15],
+  ['tacos_salchicha','Tacos de Salchicha','3 tacos crujientes rellenos de salchicha.','🌮',1000,true],
+  ['tacos_jamon','Tacos de Jamón','3 tacos crujientes rellenos de jamón.','🌮',1000,true],
+  ['empanadas_queso','Empanadas de Queso','5 empanadas crujientes con queso fundido.','🥟',1400,true],
+  ['espaguetis_queso','Espaguetis de Queso','Pasta italiana con salsa de tomate y queso fundido.','🍝',600,true],
+  ['tostones_normales','Tostones Naturales','Plátano verde frito, crujiente y salado.','🍌',450,true],
+  ['tostones_ajo','Tostones de Ajo','Tostones con aliño de ajo y hierbas.','🍌',550,true],
+  ['tostones_rellenos','Tostones Rellenos','Tostones rellenos de jamón y queso.','🍌',600,true],
 ];
 const POSTRES = [
-  ['donas_nutella','Donas con Nutella','6 donas con relleno de Nutella.','🍩',1000,true,5],
-  ['donas_cubierta_nutella','Donas con Cubierta y Relleno de Nutella','6 donas con cubierta y relleno de crema de cacao.','🍩',1800,true,5],
-  ['berlinesas','Berlinesas con Nutella','6 berlinesas rellenas de crema de cacao.','🍫',1300,true,5],
-  ['rosquitas_azucar','Rosquitas con Azúcar','10 rosquitas crujientes con azúcar.','🍩',800,true,5],
-  ['rosquitas_rellenas','Rosquitas Rellenas con Nutella','6 rosquitas rellenas con crema de cacao.','🍩',1300,true,5],
-  ['helados','Helados','Copa de helado, sabor a elegir.','🍦',500,true,3],
-  ['helados_potes','Potes de Helado','Pote de helado individual.','🍦',350,true,3],
+  ['donas_nutella','Donas con Nutella','6 donas con relleno de Nutella.','🍩',1000,true],
+  ['donas_cubierta_nutella','Donas con Cubierta y Relleno de Nutella','6 donas con cubierta y relleno de crema de cacao.','🍩',1800,true],
+  ['berlinesas','Berlinesas con Nutella','6 berlinesas rellenas de crema de cacao.','🍫',1300,true],
+  ['rosquitas_azucar','Rosquitas con Azúcar','10 rosquitas crujientes con azúcar.','🍩',800,true],
+  ['rosquitas_rellenas','Rosquitas Rellenas con Nutella','6 rosquitas rellenas con crema de cacao.','🍩',1300,true],
+  ['helados','Helados','Copa de helado, sabor a elegir.','🍦',500,true],
+  ['helados_potes','Potes de Helado','Pote de helado individual.','🍦',350,true],
 ];
 const BEBIDAS = [
-  ['batidos','Batidos Naturales','Batido de frutas naturales (mango, plátano, papaya).','🥤',600,true,5],
-  ['colada','Colada','Café cubano tradicional, 4 pocillos.','☕',600,true,5],
-  ['malteada','Malteada','Malteada cremosa de chocolate, fresa o vainilla.','🥤',650,true,5],
-  ['limonada','Limonada','Limonada fresca con o sin menta.','🍋',500,true,3],
-  ['limonada_brasilera','Limonada Brasilera','Limonada cremosa con leche condensada.','🍋',600,true,3],
-  ['smoothie','Smoothie','Smoothie de frutas tropicales.','🥤',700,true,5],
-  ['batido_nutella','Batido de Nutella','Batido cremoso con crema de cacao.','🥤',700,true,5],
-  ['jugos','Jugos Naturales','Jugos naturales de frutas de la temporada.','🧃',400,true,3],
-  ['refrescos','Refresco de Lata','Lata de refresco nacional 350ml.','🥤',550,true,1],
-  ['cerveza','Cerveza','Cerveza nacional lata 355ml.','🍺',600,true,1],
-  ['malta','Malta','Malta fría 350ml.','🍺',600,true,1],
+  ['batidos','Batidos Naturales','Batido de frutas naturales (mango, plátano, papaya).','🥤',600,true],
+  ['colada','Colada','Café cubano tradicional, 4 pocillos.','☕',600,true],
+  ['malteada','Malteada','Malteada cremosa de chocolate, fresa o vainilla.','🥤',650,true],
+  ['limonada','Limonada','Limonada fresca con o sin menta.','🍋',500,true],
+  ['limonada_brasilera','Limonada Brasilera','Limonada cremosa con leche condensada.','🍋',600,true],
+  ['smoothie','Smoothie','Smoothie de frutas tropicales.','🥤',700,true],
+  ['batido_nutella','Batido de Nutella','Batido cremoso con crema de cacao.','🥤',700,true],
+  ['jugos','Jugos Naturales','Jugos naturales de frutas de la temporada.','🧃',400,true],
+  ['refrescos','Refresco de Lata','Lata de refresco nacional 350ml.','🥤',550,true],
+  ['cerveza','Cerveza','Cerveza nacional lata 355ml.','🍺',600,true],
+  ['malta','Malta','Malta fría 350ml.','🍺',600,true],
 ];
 const COMBOS = [
-  ['combo_familiar','Combo Familiar','Pizza familiar 42×30 + 2 bebidas + 1 postre.','🎉',3200,true,25,['pizza_especial','refrescos','refrescos','helados']],
-  ['combo_duo','Combo Duo','2 pizzas medianas 25cm + 1 bebida grande.','🎉',2900,true,25,['pizza_muzzarella','pizza_especial','malteada']],
+  ['combo_familiar','Combo Familiar','Pizza familiar 42×30 + 2 bebidas + 1 postre.','🎉',3200,true,['pizza_especial','refrescos','refrescos','helados']],
+  ['combo_duo','Combo Duo','2 pizzas medianas 25cm + 1 bebida grande.','🎉',2900,true,['pizza_muzzarella','pizza_especial','malteada']],
 ];
 
 // Tamaños con borderDelta según spec (pizza queso / pizza borde queso)
@@ -149,15 +149,23 @@ function buildPriceBySize(small, family) {
     }
 
     // 5. Productos (pizzas, comidas, postres, bebidas, combos)
+    // FASE: construir allProducts desde las constantes PIZZAS/COMIDAS/POSTRES/BEBIDAS/COMBOS
+    // Cada producto se mapea al formato del schema (sin prepTime, eliminado en FASE C)
     const allProducts = [
+      ...PIZZAS.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],categoryId:'pizzas',isPizza:true,defaultSize:p[6],defaultIngredients:JSON.stringify(p[7])})),
+      ...COMIDAS.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],categoryId:'comidas'})),
+      ...POSTRES.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],categoryId:'postres'})),
+      ...BEBIDAS.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],categoryId:'bebidas'})),
+      ...COMBOS.map(p => ({id:p[0],name:p[1],description:p[2],emoji:p[3],price:p[4],available:p[5],categoryId:'combos',isCombo:true,comboItems:JSON.stringify(p[6])})),
     ];
+    // FASE: limpiar productos viejos para evitar duplicados (productos con IDs legacy)
+    await db.product.deleteMany({});
     for (const p of allProducts) {
-      const existing = await db.product.findUnique({where:{id:p.id}});
-      if (existing) {
-        await db.product.update({where:{id:p.id}, data:{...p}});
-      } else {
-        await db.product.create({data:{...p}});
-      }
+      await db.product.upsert({
+        where:{id:p.id},
+        update:{...p},
+        create:{...p},
+      });
     }
     console.log('✅ ' + allProducts.length + ' productos sembrados');
 
