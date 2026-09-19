@@ -595,11 +595,17 @@ function ProductForm({ initial, onClose, onSave }: {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-      <div className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-border max-h-[85vh] overflow-y-auto">
-        <h3 className="font-cartoon text-base mb-3">{initial ? 'Editar producto' : 'Nuevo producto'}</h3>
-        <div className="space-y-3">
-          <FormRow label="Nombre">
-            <input value={name} onChange={(e) => setName(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+      <div className="bg-card rounded-3xl w-full max-w-md border-2 border-border flex flex-col max-h-[90vh]">
+        {/* Header sticky */}
+        <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+          <h3 className="font-cartoon text-base">{initial ? 'Editar producto' : 'Nuevo producto'}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center" aria-label="Cerrar">✕</button>
+        </div>
+
+        {/* Body scrollable */}
+        <div className="p-4 space-y-3 overflow-y-auto flex-1">
+          <FormRow label="Nombre *">
+            <input value={name} onChange={(e) => setName(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" placeholder="Ej: Pizza Pepperoni" />
           </FormRow>
           <FormRow label="Descripción">
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm min-h-[60px]" />
@@ -635,12 +641,12 @@ function ProductForm({ initial, onClose, onSave }: {
               </button>
             </FormRow>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={isPizza} onChange={(e) => setIsPizza(e.target.checked)} />
-            Es una pizza (constructor visual)
+          <label className="flex items-center gap-2 text-sm py-1">
+            <input type="checkbox" checked={isPizza} onChange={(e) => setIsPizza(e.target.checked)} className="w-4 h-4" />
+            <span>Es una pizza (constructor visual)</span>
           </label>
 
-          {/* FASE D: Selector de ingredientes incluidos (1 porción gratis en el precio base) */}
+          {/* Selector de ingredientes incluidos para pizzas */}
           {isPizza && (
             <div className="bg-secondary/30 border border-border rounded-xl p-3">
               <p className="text-[11px] font-bold text-muted-foreground mb-2">
@@ -668,35 +674,36 @@ function ProductForm({ initial, onClose, onSave }: {
               </div>
             </div>
           )}
+        </div>
 
-          <div className="flex gap-2 pt-2">
-            <button onClick={onClose} className="flex-1 bg-secondary py-2.5 rounded-xl font-bold text-sm">
-              Cancelar
-            </button>
-            <button
-              onClick={() => {
-                if (!name.trim()) {
-                  toast.error('El nombre es obligatorio');
-                  return;
-                }
-                onSave({
-                  id: initial?.id || uid('prod'),
-                  name: name.trim(),
-                  description: description.trim(),
-                  category,
-                  emoji,
-                  price: isPizza ? 0 : Math.max(0, price), // FASE D: solo descarta si isPizza, con feedback visual
-                  available, // FASE D: preservar estado disponible
-                  isPizza,
-                  defaultSize: isPizza ? 'familiar_42x30' : undefined,
-                  defaultIngredients: isPizza ? defaultIngredients : undefined, // FASE D: configurable
-                });
-              }}
-              className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm"
-            >
-              <Save size={14} className="inline mr-1" /> Guardar
-            </button>
-          </div>
+        {/* Footer sticky - SIEMPRE visible */}
+        <div className="p-4 border-t border-border flex gap-2 shrink-0 bg-card rounded-b-3xl">
+          <button onClick={onClose} className="flex-1 bg-secondary py-3 rounded-xl font-bold text-sm">
+            Cancelar
+          </button>
+          <button
+            onClick={() => {
+              if (!name.trim()) {
+                toast.error('El nombre es obligatorio');
+                return;
+              }
+              onSave({
+                id: initial?.id || uid('prod'),
+                name: name.trim(),
+                description: description.trim(),
+                category,
+                emoji,
+                price: isPizza ? 0 : Math.max(0, price),
+                available,
+                isPizza,
+                defaultSize: isPizza ? 'familiar_42x30' : undefined,
+                defaultIngredients: isPizza ? defaultIngredients : undefined,
+              });
+            }}
+            className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5"
+          >
+            <Save size={14} /> Guardar
+          </button>
         </div>
       </div>
     </div>
@@ -795,21 +802,28 @@ function IngredientForm({ initial, sizes, onClose, onSave }: {
   const [prices, setPrices] = useState<Record<string, number>>(
     initial?.priceBySize as Record<string, number> || {}
   );
+  const [available, setAvailable] = useState(initial?.available ?? true);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-      <div className="bg-card rounded-3xl p-5 w-full max-w-md border-2 border-border max-h-[85vh] overflow-y-auto">
-        <h3 className="font-cartoon text-base mb-3">{initial ? 'Editar ingrediente' : 'Nuevo ingrediente'}</h3>
-        <div className="space-y-3">
-          <FormRow label="Nombre">
-            <input value={name} onChange={(e) => setName(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
+      <div className="bg-card rounded-3xl w-full max-w-md border-2 border-border flex flex-col max-h-[90vh]">
+        {/* Header sticky */}
+        <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+          <h3 className="font-cartoon text-base">{initial ? 'Editar ingrediente' : 'Nuevo ingrediente'}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center" aria-label="Cerrar">✕</button>
+        </div>
+
+        {/* Body scrollable */}
+        <div className="p-4 space-y-3 overflow-y-auto flex-1">
+          <FormRow label="Nombre *">
+            <input value={name} onChange={(e) => setName(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" placeholder="Ej: Pepperoni" />
           </FormRow>
           <div className="grid grid-cols-2 gap-2">
             <FormRow label="Emoji">
               <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2 w-full text-sm" />
             </FormRow>
             <FormRow label="Color (visualizador)">
-              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full h-9 bg-background border border-border rounded-xl" />
+              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full h-10 bg-background border border-border rounded-xl" />
             </FormRow>
           </div>
           <div>
@@ -817,39 +831,52 @@ function IngredientForm({ initial, sizes, onClose, onSave }: {
             <div className="grid grid-cols-2 gap-2">
               {sizes.map((s) => (
                 <label key={s.id} className="text-xs">
-                  <span className="text-muted-foreground block">{s.label}</span>
+                  <span className="text-muted-foreground block mb-0.5">{s.label}</span>
                   <input
                     type="number"
                     value={prices[s.id] || 0}
                     onChange={(e) => setPrices({ ...prices, [s.id]: parseInt(e.target.value) || 0 })}
-                    className="bg-background border border-border rounded px-2 py-1 w-full text-sm"
+                    className="bg-background border border-border rounded px-2 py-1.5 w-full text-sm"
                   />
                 </label>
               ))}
             </div>
           </div>
-          <div className="flex gap-2 pt-2">
-            <button onClick={onClose} className="flex-1 bg-secondary py-2.5 rounded-xl font-bold text-sm">Cancelar</button>
+          <FormRow label="Disponible">
             <button
-              onClick={() => {
-                if (!name.trim()) {
-                  toast.error('El nombre es obligatorio');
-                  return;
-                }
-                onSave({
-                  id: initial?.id || uid('ing'),
-                  name: name.trim(),
-                  emoji,
-                  color,
-                  priceBySize: prices,
-                  available: true,
-                });
-              }}
-              className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm"
+              type="button"
+              onClick={() => setAvailable(!available)}
+              className={`w-full px-3 py-2 rounded-xl font-bold text-sm transition ${available ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}
             >
-              <Save size={14} className="inline mr-1" /> Guardar
+              {available ? '✅ Disponible' : '❌ Agotado'}
             </button>
-          </div>
+          </FormRow>
+        </div>
+
+        {/* Footer sticky - SIEMPRE visible */}
+        <div className="p-4 border-t border-border flex gap-2 shrink-0 bg-card rounded-b-3xl">
+          <button onClick={onClose} className="flex-1 bg-secondary py-3 rounded-xl font-bold text-sm">
+            Cancelar
+          </button>
+          <button
+            onClick={() => {
+              if (!name.trim()) {
+                toast.error('El nombre es obligatorio');
+                return;
+              }
+              onSave({
+                id: initial?.id || uid('ing'),
+                name: name.trim(),
+                emoji,
+                color,
+                priceBySize: prices,
+                available,
+              });
+            }}
+            className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5"
+          >
+            <Save size={14} /> Guardar
+          </button>
         </div>
       </div>
     </div>
