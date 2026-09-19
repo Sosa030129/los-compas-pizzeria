@@ -665,7 +665,7 @@ function ProductForm({ initial, onClose, onSave }: {
           {isPizza && (
             <div className="bg-secondary/30 border border-border rounded-xl p-3">
               <p className="text-[11px] font-bold text-muted-foreground mb-2">
-                Ingredientes incluidos (1 porción gratis en precio base)
+                Ingredientes incluidos (preseleccionados al abrir la pizza)
               </p>
               <div className="grid grid-cols-2 gap-1.5">
                 {allIngredients.filter((i) => i.available).map((ing) => {

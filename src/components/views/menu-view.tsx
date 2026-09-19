@@ -85,14 +85,13 @@ export function MenuView() {
     });
   };
 
-  // extras: solo se cobran las porciones adicionales a las incluidas por defecto
+  // extras: cada porción de ingrediente se cobra completa (sin porción gratis)
   const extras = selectedIngs.reduce((sum, ci) => {
     const ing = ingredients.find((i) => i.id === ci.ingredientId);
     if (!ing || !selectedSize) return sum;
     const price = getIngredientPrice(ing, selectedSize);
     const mult = ingredientQtyMultiplier(ci.qty);
-    const freePortions = defaultIngredientIds.has(ci.ingredientId) ? 1 : 0;
-    return sum + price * Math.max(0, mult - freePortions);
+    return sum + price * mult;
   }, 0);
 
   const currentSize = selectedSize ? sizes.find((s) => s.id === selectedSize) : null;
@@ -335,15 +334,14 @@ export function MenuView() {
                       const qty = ci?.qty;
                       const price = getIngredientPrice(ing, selectedSize);
                       const mult = qty ? ingredientQtyMultiplier(qty) : 0;
-                      const freePortions = defaultIngredientIds.has(ing.id) ? 1 : 0;
-                      const charge = Math.max(0, mult - freePortions) * price;
+                      const charge = mult * price;
                       return (
                         <div key={ing.id} className={`flex items-center gap-2 p-2 rounded-lg border ${qty ? 'border-primary bg-primary/10' : 'border-border'}`}>
                           <span className="text-xl">{ing.emoji}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold leading-tight">{ing.name}</p>
                             <p className="text-[10px] text-muted-foreground">
-                              {charge > 0 ? `+${charge.toLocaleString('es-CU')} CUP` : (qty ? 'Incluido' : `+${price.toLocaleString('es-CU')} CUP`)}
+                              {charge > 0 ? `+${charge.toLocaleString('es-CU')} CUP` : `+${price.toLocaleString('es-CU')} CUP`}
                             </p>
                           </div>
                           <div className="flex items-center gap-1">
@@ -507,9 +505,8 @@ export function MenuView() {
                       const qty = ci?.qty;
                       const price = getIngredientPrice(ing, selectedSize);
                       const mult = qty ? ingredientQtyMultiplier(qty) : 0;
-                      const isLocked = lockedIngredientIds.has(ing.id); // FASE H: ingrediente obligatorio
-                      const freePortions = defaultIngredientIds.has(ing.id) ? 1 : 0;
-                      const charge = Math.max(0, mult - freePortions) * price;
+                      const isLocked = lockedIngredientIds.has(ing.id);
+                      const charge = mult * price;
                       return (
                         <div key={ing.id} className={`flex items-center gap-2 p-2 rounded-lg border ${qty ? 'border-primary bg-primary/10' : 'border-border'} ${isLocked ? 'ring-2 ring-primary/40' : ''}`}>
                           <span className="text-xl">{ing.emoji}</span>
@@ -519,7 +516,7 @@ export function MenuView() {
                               {isLocked && <span title="Ingrediente obligatorio de la oferta">🔒</span>}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {charge > 0 ? `+${charge.toLocaleString('es-CU')} CUP` : (qty ? 'Incluido' : `+${price.toLocaleString('es-CU')} CUP`)}
+                              {charge > 0 ? `+${charge.toLocaleString('es-CU')} CUP` : `+${price.toLocaleString('es-CU')} CUP`}
                             </p>
                           </div>
                           <div className="flex items-center gap-1">

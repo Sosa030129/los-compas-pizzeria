@@ -29,20 +29,13 @@ export function BuilderView() {
   // Ahora: borderPrice = borderDelta (ej: 150 para pequeñas, 500 para familiar, 550 para extra)
   const borderPrice = currentSize.borderDelta ?? 0;
 
-  // El queso está incluido en el precio base. Solo cobramos como extra las porciones
-  // adicionales a 1 (bug #11: misma pizza con precios distintos menú vs builder).
-  const BASE_INCLUDED = new Set(['queso']); // ingredientes con 1 porción gratis en el precio base
-
+  // FASE: cada porción se cobra completa (sin porción gratis en el precio base)
   const extras = selected.reduce((sum, ci) => {
     const ing = ingredients.find((i) => i.id === ci.ingredientId);
     if (!ing) return sum;
     const price = getIngredientPrice(ing, size);
-    const mult = ingredientQtyMultiplier(ci.qty); // 1, 2, or 3
-    // Si es ingrediente base incluido y qty > 1, cobrar (mult - 1) porciones extra
-    // Si no es base incluido, cobrar todas las porciones
-    const freePortions = BASE_INCLUDED.has(ci.ingredientId) ? 1 : 0;
-    const chargeable = Math.max(0, mult - freePortions);
-    return sum + price * chargeable;
+    const mult = ingredientQtyMultiplier(ci.qty);
+    return sum + price * mult;
   }, 0);
 
   const total = currentSize.basePrice + (border ? borderPrice : 0) + extras;

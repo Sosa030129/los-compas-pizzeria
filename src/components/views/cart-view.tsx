@@ -484,23 +484,14 @@ export function CartView() {
                   const qty = ci?.qty;
                   const price = getIngredientPrice(ing, editSize ?? editItem.size);
                   const mult = qty ? ingredientQtyMultiplier(qty) : 0;
-                  const editDefaults = (() => {
-                    const s = new Set<string>();
-                    if (editItem.productId) {
-                      const p = products.find((pr) => pr.id === editItem.productId);
-                      p?.defaultIngredients?.forEach((id) => s.add(id));
-                    }
-                    return s;
-                  })();
-                  const freePortions = editDefaults.has(ing.id) ? 1 : 0;
-                  const charge = Math.max(0, mult - freePortions) * price;
+                  const charge = mult * price;
                   return (
                     <div key={ing.id} className={`flex items-center gap-2 p-2 rounded-lg border ${qty ? 'border-primary bg-primary/10' : 'border-border'}`}>
                       <span className="text-xl">{ing.emoji}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold leading-tight">{ing.name}</p>
                         <p className="text-[10px] text-muted-foreground">
-                          {charge > 0 ? `+${charge.toLocaleString('es-CU')} CUP` : (qty ? 'Incluido' : `+${price.toLocaleString('es-CU')} CUP`)}
+                          {charge > 0 ? `+${charge.toLocaleString('es-CU')} CUP` : `+${price.toLocaleString('es-CU')} CUP`}
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
@@ -546,8 +537,7 @@ export function CartView() {
                   if (!ing || !editSize) return sum;
                   const price = getIngredientPrice(ing, editSize);
                   const mult = ingredientQtyMultiplier(ci.qty);
-                  const freePortions = editDefaults.has(ci.ingredientId) ? 1 : 0;
-                  return sum + price * Math.max(0, mult - freePortions);
+                  return sum + price * mult;
                 }, 0);
                 const newUnitPrice = (sz?.basePrice ?? 0) + (editBorder ? (sz?.borderDelta ?? 0) : 0);
                 const newTotal = newUnitPrice + newExtras;
@@ -573,8 +563,7 @@ export function CartView() {
                         if (!ing) return sum;
                         const price = getIngredientPrice(ing, editSize);
                         const mult = ingredientQtyMultiplier(ci.qty);
-                        const freePortions = editDefaults.has(ci.ingredientId) ? 1 : 0;
-                        return sum + price * Math.max(0, mult - freePortions);
+                        return sum + price * mult;
                       }, 0);
                       const newUnitPrice = sz.basePrice + (editBorder ? (sz.borderDelta ?? 0) : 0);
                       updateCartItem(editItem.id, {

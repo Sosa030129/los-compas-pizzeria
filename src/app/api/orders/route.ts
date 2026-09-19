@@ -176,15 +176,14 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // Calcular extras reales
+          // Calcular extras: cada porción se cobra completa (sin porción gratis)
           const itemIngs = Array.isArray(item.ingredients) ? item.ingredients : [];
           serverExtrasPerUnit = itemIngs.reduce((sum: number, ci: any) => {
             const ing = allIngredients.find((i) => i.id === ci.ingredientId);
             if (!ing) return sum;
             const price = getIngredientPriceServer(ing.priceBySize, sizeId);
             const mult = ci.qty === 'doble' ? 2 : ci.qty === 'triple' ? 3 : 1;
-            const freePortions = defaultIds.has(ci.ingredientId) ? 1 : 0;
-            return sum + price * Math.max(0, mult - freePortions);
+            return sum + price * mult;
           }, 0);
         }
       }

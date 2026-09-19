@@ -404,14 +404,13 @@ function ProfileView({
               unitPrice = sz.basePrice + (item.borderCheese ? (sz.borderDelta ?? 0) : 0);
             }
             // Recalcular extras con precios actuales de ingredientes
-            const defaultIds = new Set(p.defaultIngredients || []);
+            const defaultIds = new Set(p.defaultIngredients || []); // solo para validar incluidos
             extrasTotal = (item.ingredients || []).reduce((sum: number, ci: any) => {
               const ing = ingredients.find((i) => i.id === ci.ingredientId);
               if (!ing || !item.size) return sum;
               const price = getIngredientPrice(ing, item.size as PizzaSize);
               const mult = ingredientQtyMultiplier(ci.qty);
-              const freePortions = defaultIds.has(ci.ingredientId) ? 1 : 0;
-              return sum + price * Math.max(0, mult - freePortions);
+              return sum + price * mult; // cada porción se cobra completa
             }, 0);
           } else {
             // Producto normal: usar precio actual
